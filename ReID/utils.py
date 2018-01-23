@@ -37,6 +37,8 @@ class V_Re_ID_Dataset(Dataset):
         for line in file:
             img_name,label = line.strip().split(' ')
             img = Image.open(img_name)
+            if img.size[0]<50 or img.size[1]<50:
+                continue
             ## Random Flip
             if flip == True:
                 img = self.t_flip(img)
