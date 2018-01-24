@@ -55,7 +55,6 @@ if __name__ == '__main__':
           id = id_ + j
           txt.append([save_img, str(id)])        
           imgs += 1
-    sys.exit()
     id_ += w.shape[1]
 
   # Write database_txt
