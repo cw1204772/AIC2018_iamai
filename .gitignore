@@ -1,3 +1,4 @@
 UA_dataset/
 ReID/__pycache__/
 ReID/train_info.txt
+ReID/ckpt/
