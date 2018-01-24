@@ -9,6 +9,7 @@ import sys
 from tqdm import tqdm
 import argparse
 import sys
+import os
 cudnn.benchmark=True
 
 
@@ -42,6 +43,8 @@ def train(args,Dataset,Dataloader,net):
             pbar.set_postfix({'loss':'%.2f'%(loss.data[0])})
         pbar.close()
         print('Training total loss = %.3f'%(epoch_loss/iter_count))
+        torch.save(net.state_dict(),os.path.join('ckpt',args.save_model_dir,'model_%d.ckpt'%(e)))
+
 
 
 
@@ -61,6 +64,7 @@ if __name__ == '__main__':
     parser.add_argument('--batch_size',type=int,default=1,help='batch size number')
     parser.add_argument('--n_epochs',type=int,default=50,help='number of training epochs')
     parser.add_argument('--load_ckpt',default=None,help='path to load ckpt')
+    parser.add_argument('--save_model_dir',default=None,help='path to save model')
 
     args = parser.parse_args()
 
@@ -73,6 +77,8 @@ if __name__ == '__main__':
     if torch.cuda.is_available():
         net.cuda()
     
+    if args.save_model_dir !=  None:
+        os.system('mkdir -p %s' % os.path.join('ckpt', args.save_model_dir))
     if args.load_ckpt == None:
         print(len(Dataset))
         train(args,Dataset,Dataloader,net)
