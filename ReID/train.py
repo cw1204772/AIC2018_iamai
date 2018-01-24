@@ -2,13 +2,14 @@ import torch
 import torch.nn as nn
 from torch.autograd import Variable
 import torch.optim as optim
+import torch.backends.cudnn as cudnn
 from utils import V_Re_ID_Dataset,Get_DataLoader
 import models
 import sys
 from tqdm import tqdm
 import argparse
 import sys
-
+cudnn.benchmark=True
 
 
 def train(args,Dataset,Dataloader,net):
