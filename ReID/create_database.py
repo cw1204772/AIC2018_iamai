@@ -34,8 +34,8 @@ if __name__ == '__main__':
     label = loadmat(f)['gtInfo']
     x_center = label[0][0][0].astype('float')
     y_bottom = label[0][0][1].astype('float')
-    w = label[0][0][2].astype('float')
-    h = label[0][0][3].astype('float')
+    h = label[0][0][2].astype('float')
+    w = label[0][0][3].astype('float')
     frames = label[0][0][4].astype('int')
     for i in frames.squeeze().tolist():
       img = Image.open(os.path.join(img_dir, 'img%05d.jpg' % i))
@@ -55,6 +55,7 @@ if __name__ == '__main__':
           id = id_ + j
           txt.append([save_img, str(id)])        
           imgs += 1
+    sys.exit()
     id_ += w.shape[1]
 
   # Write database_txt
