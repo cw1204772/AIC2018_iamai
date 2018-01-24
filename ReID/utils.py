@@ -68,7 +68,7 @@ def Get_val_DataLoader(dataset,batch_size=128,shuffle=True,num_workers=6):
     sampler = SubsetRandomSampler(dataset.val_index)
     return DataLoader(dataset,batch_size = batch_size,sampler=sampler,num_workers=6)
 
-def generating_train_test_info()
+def generating_train_test_info():
     label_list = []
     file = open('train_info.txt','r')
     file_content = file.readlines()
