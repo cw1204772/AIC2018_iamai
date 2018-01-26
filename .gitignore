@@ -1,4 +1,5 @@
-UA_dataset/
-ReID/__pycache__/
-ReID/train_info.txt
-ReID/ckpt/
+ReID/UA_Train/
+ReID/UA_Test/
+ReID/ReID-CNN/__pycache__/
+ReID/ReID-CNN/txt_file/
+ReID/ReID-CNN/ckpt/
