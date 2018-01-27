@@ -80,11 +80,12 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    features = torch.load('features')
-    labels = torch.load('labels')
+    # features = torch.load('features')
+    # labels = torch.load('labels')
     print('loading model....')
     net = load_model(args.n_layer,args.load_ckpt)
     net.cuda(1)
+    # net.eval()
     print('get gallery....')
     gallery_dict = get_sample_info(args.info,6)
     compose = transforms.Compose([transforms.Resize((224,224)),transforms.ToTensor(),transforms.Normalize(mean=[0.485,0.456,0.406],
@@ -106,18 +107,18 @@ if __name__ == '__main__':
     features = torch.cat(features,dim=0)
     labels = torch.cat(labels)
     
-    # torch.save(features,'features')
-    # torch.save(labels,'labels')
+    torch.save(features,'features')
+    torch.save(labels,'labels')
     # exit(-1)
     print('compute cmc....')
     cmc,error = compute_cmc(features,labels)
-    # print(cmc[:100])
+    print(cmc[:100])
     # print(error[:10])
-    img_list = []
-    for values in gallery_dict.values():
-        img_list+=values
-    for i in range(len(error)):
-        print(img_list[i],img_list[error[i]])
+    # img_list = []
+    # for values in gallery_dict.values():
+        # img_list+=values
+    # for i in range(len(error)):
+        # print(img_list[i],img_list[error[i]])
 
     
     
