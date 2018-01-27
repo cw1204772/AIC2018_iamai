@@ -159,7 +159,7 @@ if __name__ == '__main__':
         net.cuda()
     
     if args.save_model_dir !=  None:
-        os.system('mkdir -p %s' % os.path.join(args.save_model_dir)
+        os.system('mkdir -p %s' % os.path.join(args.save_model_dir))
     ## train
     if args.load_ckpt == None:
         print('total data:',len(Dataset))
