@@ -85,7 +85,7 @@ if __name__ == '__main__':
     print('loading model....')
     net = load_model(args.n_layer,args.load_ckpt)
     net.cuda(1)
-    # net.eval()
+    net.eval()
     print('get gallery....')
     gallery_dict = get_sample_info(args.info,6)
     compose = transforms.Compose([transforms.Resize((224,224)),transforms.ToTensor(),transforms.Normalize(mean=[0.485,0.456,0.406],

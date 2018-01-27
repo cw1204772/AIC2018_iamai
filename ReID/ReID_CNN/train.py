@@ -44,7 +44,7 @@ def train_ict(args,Dataset,train_Dataloader,val_Dataloader,net):
             pbar.set_postfix({'loss':'%.2f'%(loss.data[0])})
         pbar.close()
         print('Training total loss = %.3f'%(epoch_loss/iter_count))
-        torch.save(net.state_dict(),os.path.join('ckpt',args.save_model_dir,'model_%d.ckpt'%(e)))
+        torch.save(net.state_dict(),os.path.join(args.save_model_dir,'model_%d.ckpt'%(e)))
         print('start validation')
         correct_i = []
         correct_c = []

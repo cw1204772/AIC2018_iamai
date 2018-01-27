@@ -44,7 +44,7 @@ class VReID_Dataset(Dataset):
         # exit(-1)
         # print(self.n_id)
         index = np.load('train_val_index.npy')
-        n_train = int(0.98*len(self.label_list))
+        n_train = int(0.95*len(self.label_list))
         n_val = len(self.label_list)-n_train
         self.train_index = list(index[:n_train])
         self.val_index = list(index[-n_val:])
