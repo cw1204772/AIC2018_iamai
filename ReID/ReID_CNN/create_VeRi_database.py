@@ -7,9 +7,13 @@ import argparse
 if __name__ == '__main__':
   # Argparse
     parser = argparse.ArgumentParser(description='Database generator for UA-DETRAC dataset')
-    parser.add_argument('img_dir', help='the dir containing dataset imgs')
-    parser.add_argument('label_dir', help='the dir containing dataset label files (MAT format)')
-    parser.add_argument('database_txt', help='the output txt file listing all imgs to database and its label')
+    parser.add_argument('--img_dir', help='the dir containing dataset imgs')
+    parser.add_argument('--query_dir', help='the dir containing dataset imgs')
+    parser.add_argument('--gallery_dir', help='the dir containing dataset imgs')
+    parser.add_argument('--label_dir', help='the dir containing dataset label files (MAT format)')
+    parser.add_argument('--train_txt', help='the output txt file listing all imgs to database and its label')
+    parser.add_argument('--query_txt', help='the output txt file listing all imgs to database and its label')
+    parser.add_argument('--gallery_txt', help='the output txt file listing all imgs to database and its label')
     args = parser.parse_args()
 
 
@@ -19,7 +23,7 @@ if __name__ == '__main__':
 
     img_dir = args.img_dir
 
-    txt_file = open(args.database_txt,'w')
+    txt_file = open(args.train_txt,'w')
     
     img_list = []
     V_ID_list = []
@@ -47,5 +51,22 @@ if __name__ == '__main__':
         txt_file.write(img_path+' '+V_ID+' '+colorID+' '+typeID+'\n')
     txt_file.close()
     xmlfile.close()
+
+    #query 
+    img_list = os.listdir(args.query_dir)
+    img_list.sort()
+    file = open(args.query_txt,'w')
+    for i in img_list:
+        file.write(os.path.join(args.query_dir,i)+'\n')
+    file.close()
+    #gallery
+    #query 
+    img_list = os.listdir(args.gallery_dir)
+    img_list.sort()
+    file = open(args.gallery_txt,'w')
+    for i in img_list:
+        file.write(os.path.join(args.gallery_dir,i)+'\n')
+    file.close()
+
 
 

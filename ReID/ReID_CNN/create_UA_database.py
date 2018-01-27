@@ -10,10 +10,10 @@ if __name__ == '__main__':
 
   # Argparse
   parser = argparse.ArgumentParser(description='Database generator for UA-DETRAC dataset')
-  parser.add_argument('img_dir', help='the dir containing dataset imgs')
-  parser.add_argument('label_dir', help='the dir containing dataset label files (MAT format)')
-  parser.add_argument('database_dir', help='the dir you wish to store database')
-  parser.add_argument('database_txt', help='the output txt file listing all imgs to database and its label')
+  parser.add_argument('--img_dir', help='the dir containing dataset imgs')
+  parser.add_argument('--label_dir', help='the dir containing dataset label files (MAT format)')
+  parser.add_argument('--database_dir', help='the dir you wish to store database')
+  parser.add_argument('--database_txt', help='the output txt file listing all imgs to database and its label')
   args = parser.parse_args()
 
   # List label file

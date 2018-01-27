@@ -74,12 +74,15 @@ def train_ict(args,Dataset,train_Dataloader,val_Dataloader,net):
                     correct_t.append(0)
         print('val acc: id:%.3f, color:%.3f, type:%.3f'%(np.mean(correct_i),np.mean(correct_c),np.mean(correct_t)))
         net.train()
+        file = open(os.path.join(args.save_model_dir,'val_log.txt'),'a')
+        file.write('Epoch %d: val_id_acc = %.3f, val_color_acc = %.3f, val_type_acc= %.3f\n'%(e,np.mean(correct_i),np.mean(correct_c),np.mean(correct_t)))
+        file.close()
 
 def train(args,Dataset,train_Dataloader,val_Dataloader,net):
 
     optimizer = optim.Adam(net.parameters(),lr=args.lr)
     criterion = nn.CrossEntropyLoss()
-
+    
     for e in range(args.n_epochs):
         
         pbar = tqdm(total=len(Dataset.train_index),ncols=100,leave=True)
@@ -105,8 +108,9 @@ def train(args,Dataset,train_Dataloader,val_Dataloader,net):
             pbar.set_postfix({'loss':'%.2f'%(loss.data[0])})
         pbar.close()
         print('Training total loss = %.3f'%(epoch_loss/iter_count))
-        torch.save(net.state_dict(),os.path.join('ckpt',args.save_model_dir,'model_%d.ckpt'%(e)))
+        torch.save(net.state_dict(),os.path.join(args.save_model_dir,'model_%d.ckpt'%(e)))
         print('start validation')
+        net.eval()
         correct = []
         for i,sample in enumerate(val_Dataloader):
             img = Variable(sample['img'],volatile=True).cuda()
@@ -119,6 +123,10 @@ def train(args,Dataset,train_Dataloader,val_Dataloader,net):
                 else:
                     correct.append(0)
         print('val acc: %.3f'%(np.mean(correct)))
+        net.train()
+        file = open(os.path.join(args.save_model_dir,'val_log.txt'),'a')
+        file.write('Epoch %d: val_acc = %.3f\n'%(e,np.mean(correct)))
+        file.close()
 
 
 if __name__ == '__main__':
@@ -151,7 +159,7 @@ if __name__ == '__main__':
         net.cuda()
     
     if args.save_model_dir !=  None:
-        os.system('mkdir -p %s' % os.path.join('ckpt', args.save_model_dir))
+        os.system('mkdir -p %s' % os.path.join(args.save_model_dir)
     ## train
     if args.load_ckpt == None:
         print('total data:',len(Dataset))

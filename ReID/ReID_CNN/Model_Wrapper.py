@@ -43,7 +43,6 @@ class ResNet_Loader(object):
             img = self.compose(img)
             batch_list.append(img)
             if (i+1)% 128 == 0:
-                print(i)
                 features = self.model(Variable(torch.stack(batch_list)).cuda())
                 feature_list.append(features.cpu().data)
                 batch_list = []
