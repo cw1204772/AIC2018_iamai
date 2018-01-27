@@ -137,10 +137,10 @@ if __name__ == '__main__':
     parser.add_argument('--pretrain',type=bool,default=True,help='Whether use pretrained model')
     parser.add_argument('--lr',type=float,default=0.001,help='learning rate')
     parser.add_argument('--batch_size',type=int,default=64,help='batch size number')
-    parser.add_argument('--n_epochs',type=int,default=50,help='number of training epochs')
+    parser.add_argument('--n_epochs',type=int,default=20,help='number of training epochs')
     parser.add_argument('--load_ckpt',default=None,help='path to load ckpt')
     parser.add_argument('--save_model_dir',default=None,help='path to save model')
-    parser.add_argument('--n_layer',type=int,default=50,help='number of Resnet layers')
+    parser.add_argument('--n_layer',type=int,default=18,help='number of Resnet layers')
     parser.add_argument('--dataset',default='VeRi',help='which dataset:VeRi or VeRi_ict')
 
     args = parser.parse_args()

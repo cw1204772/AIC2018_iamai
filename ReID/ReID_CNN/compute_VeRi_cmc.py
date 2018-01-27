@@ -39,7 +39,7 @@ def compute_cmc(features,labels):
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Train Re-ID net',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--load_ckpt',default=None,help='path to load ckpt')
-    parser.add_argument('--n_layer',type=int,default=50,help='number of Resnet layers')
+    parser.add_argument('--n_layer',type=int,default=18,help='number of Resnet layers')
     parser.add_argument('--gallery_txt',default=None,help='path to load gallery')
     parser.add_argument('--query_txt',default=None,help='path to load query')
     parser.add_argument('--dis_mat',default=None,help='path to store distance')
