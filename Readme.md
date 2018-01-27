@@ -28,8 +28,8 @@ python3 compute_VeRi_dis.py [--load_ckpt <model_path>][--n_layer <ResNet_layer>]
 ```
 4. compute cmc curve
 ```  
-  1. open matlab in the "VeRi\_cmc/" directory
-  2. open "baseline\_evaluation\_FACT\_776.m" file
-  3. change "dis\_CNN" mat path, "gt\_index",  "jk_index" txt file path
+  1. open matlab in the "VeRi_cmc/" directory
+  2. open "baseline_evaluation_FACT_776.m" file
+  3. change "dis_CNN" mat path, "gt_index",  "jk_index" txt file path
   4. run and get plot
 ```
