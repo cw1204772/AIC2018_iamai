@@ -68,5 +68,5 @@ if __name__ == '__main__':
     
     SimMat = SimMat.numpy()
     import scipy.io as sio
-    sio.savemat(args.dis_txt,{'dist_CNN':SimMat})
+    sio.savemat(args.dis_mat,{'dist_CNN':SimMat})
     
