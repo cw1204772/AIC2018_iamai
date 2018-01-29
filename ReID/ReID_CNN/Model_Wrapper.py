@@ -30,11 +30,8 @@ class ResNet_Loader(object):
         print('loading resnet%d model'%(n_layer))
         self.compose = transforms.Compose([transforms.Resize((224,224)),transforms.ToTensor(),
                                            transforms.Normalize(mean=[0.485,0.456,0.406],std=[0.229,0.224,0.225])])
-    def inference(self,img_list):
-        file = open(img_list,'r')
-        file_name_list = [name.strip() for name in file.readlines()]
-        file.close()
-        
+    def inference(self,file_name_list):
+         
         self.model.cuda()
         feature_list = []
         batch_list = []
