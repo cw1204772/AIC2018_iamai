@@ -14,7 +14,7 @@ import numpy as np
 
 
 class VReID_Dataset(Dataset):
-    def __init__(self, txt_file,resize=(224,224),crop=False,flip=False,pretrained_model=True,dataset='VeRi'):
+    def __init__(self, txt_file,resize=(224,224),crop=False,flip=False,jitter=False,pretrained_model=True,dataset='VeRi'):
         
         ######################
         self.img_list = []
@@ -60,7 +60,8 @@ class VReID_Dataset(Dataset):
             tran.append(transforms.Resize(resize))
         if flip == True:
             tran.append(transforms.RandomHorizontalFlip())
-            
+        if jitter == True:
+            tran.append(transforms.ColorJitter(brightness=5))
         tran.append(transforms.ToTensor())
         if pretrained_model == True:
             tran.append(transforms.Normalize(mean=[0.485, 0.456, 0.406],

@@ -134,6 +134,7 @@ if __name__ == '__main__':
     parser.add_argument('--info',default='train_info.txt',help='txt file contain path of data')
     parser.add_argument('--crop',type=bool,default=True,help='Whether crop the images')
     parser.add_argument('--flip',type=bool,default=True,help='Whether randomly flip the image')
+    parser.add_argument('--jitter',type=bool,default=True,help='Whether randomly jitter the image')
     parser.add_argument('--pretrain',type=bool,default=True,help='Whether use pretrained model')
     parser.add_argument('--lr',type=float,default=0.001,help='learning rate')
     parser.add_argument('--batch_size',type=int,default=64,help='batch size number')
@@ -146,7 +147,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     ## Get Dataset & DataLoader
-    Dataset = VReID_Dataset(args.info,crop=args.crop,flip=args.flip,pretrained_model=args.pretrain,dataset=args.dataset)
+    Dataset = VReID_Dataset(args.info,crop=args.crop,flip=args.flip,jitter=args.jitter,pretrained_model=args.pretrain,dataset=args.dataset)
     train_Dataloader = Get_train_DataLoader(Dataset,batch_size=args.batch_size)
     val_Dataloader = Get_val_DataLoader(Dataset,batch_size=args.batch_size)
 
