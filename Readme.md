@@ -2,6 +2,13 @@
 
 Team name: iamai
 
+Use `git clone --recurse-submodules https://github.com/cw1204772/AIC2018_iamai.git` to clone the repository.  
+If you have already git clone the repository but have not clone the submodule, execute:
+```
+git submodule init
+git submodule update
+```
+
 ## Detection
 
 ## Tracking
