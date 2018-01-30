@@ -47,11 +47,12 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     print('loading model....')
-    model = ResNet_Loader(args.load_ckpt,args.n_layer)
+    model = ResNet_Loader(args.load_ckpt,args.n_layer,output_color=False)
     
-
-    query_txt = args.query_txt
-    gallery_txt = args.gallery_txt
+    with open(args.query_txt,'r') as f:
+        query_txt = [q.strip() for q in f.readlines()]
+    with open(args.gallery_txt,'r') as f:
+        gallery_txt = [q.strip() for q in f.readlines()]
     print('inferencing q_features')
     q_features = model.inference(query_txt)
     print('inferencing g_features')
