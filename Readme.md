@@ -6,11 +6,10 @@ Team name: iamai
 
 ## Tracking
 
-We use [iou-tracker](https://github.com/bochinski/iou-tracker) for tracking.
-To use it:
+We use [iou-tracker](https://github.com/bochinski/iou-tracker) for tracking. To use it:
 
 ```
-python3 /Tracking/iou-tracker/demo.py -d <detection_csv> -o <output_csv> -sl 0.1 -sh 0.7 -si 0.5 -tm 2
+python3 Tracking/iou-tracker/demo.py -d <detection_csv> -o <output_csv> -sl 0.1 -sh 0.7 -si 0.5 -tm 2
 ```
 
 ## ReID

@@ -1,0 +1,3 @@
+[submodule "Tracking/iou-tracker"]
+	path = Tracking/iou-tracker
+	url = https://github.com/bochinski/iou-tracker.git
