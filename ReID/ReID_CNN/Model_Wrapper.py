@@ -2,7 +2,7 @@ import torch
 import sys
 import torch.nn as nn
 from torch.autograd import Variable
-import models
+from . import models
 from torchvision import transforms
 from PIL import Image
 
@@ -19,7 +19,8 @@ class Feature_ResNet(nn.Module):
         return x.view(x.size(0),-1)
 
 class ResNet_Loader(object):
-    def __init__(self,model_path,n_layer):
+    def __init__(self,model_path,n_layer,batch_size=128):
+        self.batch_size = batch_size
         self.model = Feature_ResNet(n_layer)
         state_dict = torch.load(model_path)
         for key in list(state_dict.keys()):
@@ -39,7 +40,7 @@ class ResNet_Loader(object):
             img = Image.open(name)
             img = self.compose(img)
             batch_list.append(img)
-            if (i+1)% 128 == 0:
+            if (i+1)% self.batch_size == 0:
                 features = self.model(Variable(torch.stack(batch_list)).cuda())
                 feature_list.append(features.cpu().data)
                 batch_list = []
