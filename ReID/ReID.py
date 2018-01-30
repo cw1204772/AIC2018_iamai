@@ -216,6 +216,7 @@ print('Stage 2/3: Extract re-id feature')
 imgs = [os.path.join(opt.temp_dir, img) for img in os.listdir(opt.temp_dir)]
 reid_model = ResNet_Loader('./ReID_CNN/model/model_12.ckpt', n_layer=18, batch_size=32)
 features = reid_model.inference(imgs)
+features = features.numpy()
 np.set_printoptions(threshold=100)
 for idx, img in enumerate(os.listdir(opt.temp_dir)):
   fname = img.split('_')
@@ -262,6 +263,8 @@ f = open(opt.output_csv, 'w')
 for t in trackers_sort_by_dead_time:
   t.write_file(f)
 f.close()
+
+os.system('rm -rf %s' % opt.temp_dir)
 
 
 

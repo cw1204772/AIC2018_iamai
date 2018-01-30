@@ -2,7 +2,24 @@
 
 Team name: iamai
 
+## Detection
+
+## Tracking
+
+We use [iou-tracker](https://github.com/bochinski/iou-tracker) for tracking.
+To use it:
+
+```
+python3 /Tracking/iou-tracker/demo.py -d <detection_csv> -o <output_csv> -sl 0.1 -sh 0.7 -si 0.5 -tm 2
+```
+
 ## ReID
+
+**Use in Single Camera Tracking**
+
+```
+python3 ReID/ReID.py <tracking_csv> <video> <output_csv> --window 15 --th 150
+```
 
 **Train on VeRi Dataset**
 
@@ -32,4 +49,18 @@ python3 compute_VeRi_dis.py [--load_ckpt <model_path>][--n_layer <ResNet_layer>]
   2. open "baseline_evaluation_FACT_776.m" file
   3. change "dis_CNN" mat path, "gt_index",  "jk_index" txt file path
   4. run and get plot
+```
+
+## Visualize
+
+Use it to draw csv file onto video.
+
+```
+python3 visualize.py [-h] [--w W] [--h H] [--fps FPS] [--length LENGTH]
+                     [--delimiter DELIMITER] [--offset OFFSET]
+                     [--frame_pos FRAME_POS] [--bbox_pos BBOX_POS]
+                     [--id_pos ID_POS] [--score_pos SCORE_POS]
+                     [--score_th SCORE_TH] [--cam CAM] [--cam_pos CAM_POS]
+                     [--ss SS] [--wh_mode]
+                     INPUT_VIDEO OUTPUT_VIDEO LABEL_FILE MODE
 ```
