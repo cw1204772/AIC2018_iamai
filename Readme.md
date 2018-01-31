@@ -31,19 +31,23 @@ python3 ReID/SCT.py <tracking_csv> <video> <output_csv> --window 15 --th 150 --r
 
 `cd ReID/ReID_CNN`
 
-1. create train,query,gallery info .txt files
+1. Create train, query, gallery info .txt files
+   ```
+   bash setup.sh <dir_to_VeRi>
+   ```
 
-```
-python3 create_VeRi_database.py [--img_dir <path_to_VeRi/image_train>] [--query_dir <path_to_VeRi/image_query>]
-        [--gallery_dir <path_to_VeRi/image_test>] [--label_dir <path_to_VeRi/train_label.xml>]
-        [--train_txt <VeRi_train_info.txt>][--query_txt <VeRi_query_info.txt>][--gallery_txt <VeRi_gallery_info.txt>]
-```
-2. train the model with VeRi or VeRi\_ict dataset
-```
-python3 train.py [--info <path to VeRi_train_info.txt>][--crop,flip,pretrain <True>][--lr <0.001>][--batch_size <64>]
-                 [--n_epochs <20>][--save_model_dir <path_to_store_model>][--n_layer <18>(ResNet layer)]
-                 [--dataset <VeRi or VeRi_ict>]
-```
+2. Training
+   * Train classification model with VeRi or VeRi\_ict dataset
+
+     ```
+     python3 train.py --info VeRi_train_info.txt --lr 0.001 --batch_size 64 --n_epochs 20 --n_layer 18 --dataset VeRi
+     ```
+
+   * Train triplet model with VeRi dataset
+     ```
+     python3 train.py --info VeRi_train_info.txt --triplet VeRi_triplet.txt --lr 0.001 --batch_size 64 --n_epochs 20 --save_model_dir ./ckpt --n_layer 18 --margin 2
+     ``` 
+
 3. dump distance matrix
 ``` 
 python3 compute_VeRi_dis.py [--load_ckpt <model_path>][--n_layer <ResNet_layer>][--gallery_txt <path_to_txt>]
