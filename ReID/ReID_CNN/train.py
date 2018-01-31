@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
-from utils import VReID_Dataset,Get_train_DataLoader,Get_val_DataLoader
+from utils import VReID_Dataset,TripletImage_Dataset,Get_train_DataLoader,Get_val_DataLoader
 import models
 import sys
 from tqdm import tqdm
@@ -97,7 +97,7 @@ def train(args,Dataset,train_Dataloader,val_Dataloader,net):
             b_size = b_img.size(0)
             net.zero_grad()
             #forward
-            b_pred = net(b_img)
+            b_pred,_ = net(b_img)
             loss = criterion(b_pred,b_gt)
             epoch_loss += loss.data[0]
             # backward
@@ -128,8 +128,70 @@ def train(args,Dataset,train_Dataloader,val_Dataloader,net):
         file.write('Epoch %d: val_acc = %.3f\n'%(e,np.mean(correct)))
         file.close()
 
+def train_triplet(args,Dataset,train_Dataloader,val_Dataloader,net):
+
+    optimizer = optim.Adam(net.parameters(), lr=args.lr)
+    criterion_triplet = nn.MarginRankingLoss(margin=args.margin)
+    if args.with_class: criterion_class = nn.CrossEntropyLoss()
+    
+    for e in range(args.n_epochs):
+        
+        pbar = tqdm(total=len(Dataset.train_index),ncols=100,leave=True)
+        pbar.set_description('Epoch %d'%(e))
+
+        epoch_loss = 0
+        iter_count = 0
+        for i_batch,samples in enumerate(train_Dataloader):
+            iter_count +=1
+            b_img1 = Variable(samples['img1']).cuda()
+            b_img2 = Variable(samples['img2']).cuda()
+            b_img3 = Variable(samples['img3']).cuda()
+            if args.with_class:
+                b_class1 = Variable(samples['class1']).cuda()
+                b_class2 = Variable(samples['class2']).cuda()
+                b_class3 = Variable(samples['class3']).cuda()
+            b_size = b_img1.size(0)
+            target = Variable(-1*torch.ones(b_size, 1)).cuda()
+            net.zero_grad()
+            #forward
+            dist_pos, dist_neg, b_pred1, b_pred2, b_pred3 = net(b_img1, b_img2, b_img3)
+            loss = criterion_triplet(dist_pos, dist_neg, target)
+            if args.with_class:
+                loss += criterion_class(b_pred1, b_class1)
+                loss += criterion_class(b_pred2, b_class2)
+                loss += criterion_class(b_pred3, b_class3)
+            epoch_loss += loss.data[0]
+            # backward
+            loss.backward()
+
+            optimizer.step()
+            pbar.update(b_size)
+            pbar.set_postfix({'loss':'%.2f'%(loss.data[0])})
+        pbar.close()
+        print('Training total loss = %.3f'%(epoch_loss/iter_count))
+        torch.save(net.net.state_dict(),os.path.join(args.save_model_dir,'model_%d.ckpt'%(e)))
+        print('start validation')
+        net.eval()
+        correct = []
+        for i,sample in enumerate(val_Dataloader):
+            img1 = Variable(sample['img1'],volatile=True).cuda()
+            img2 = Variable(sample['img2'],volatile=True).cuda()
+            img3 = Variable(sample['img3'],volatile=True).cuda()
+            dist_pos, dist_neg, _, _, _ = net(img1,img2,img3)
+            dist_pos, dist_neg = dist_pos.data, dist_neg.data
+            for x in range(dist_pos.size(0)):
+                if dist_pos[x, 0] < dist_neg[x, 0]:
+                    correct.append(1)
+                else:
+                    correct.append(0)
+        print('val acc: %.3f'%(np.mean(correct)))
+        net.train()
+        file = open(os.path.join(args.save_model_dir,'val_log.txt'),'a')
+        file.write('Epoch %d: val_acc = %.3f\n'%(e,np.mean(correct)))
+        file.close()
 
 if __name__ == '__main__':
+    ## Parse arg
     parser = argparse.ArgumentParser(description='Train Re-ID net',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
     parser.add_argument('--info',default='train_info.txt',help='txt file contain path of data')
     parser.add_argument('--crop',type=bool,default=True,help='Whether crop the images')
@@ -143,19 +205,27 @@ if __name__ == '__main__':
     parser.add_argument('--save_model_dir',default=None,help='path to save model')
     parser.add_argument('--n_layer',type=int,default=18,help='number of Resnet layers')
     parser.add_argument('--dataset',default='VeRi',help='which dataset:VeRi or VeRi_ict')
-
+    parser.add_argument('--triplet',default=None,help='white-space seperated txt containing triplet sample in each row, with column order (anchor, positve, negative)')
+    parser.add_argument('--with_class',action='store_true', help='whether to train with class label during triplet training')
+    parser.add_argument('--margin',type=int,default=0,help='margin of triplet loss')
     args = parser.parse_args()
 
     ## Get Dataset & DataLoader
-    Dataset = VReID_Dataset(args.info,crop=args.crop,flip=args.flip,jitter=args.jitter,pretrained_model=args.pretrain,dataset=args.dataset)
+    if args.triplet:
+        Dataset = TripletImage_Dataset(args.info, args.triplet, crop=args.crop, flip=args.flip, jitter=args.jitter, imagenet_normalize=args.pretrain, classification=args.with_class)
+    else:
+        Dataset = VReID_Dataset(args.info,crop=args.crop,flip=args.flip,jitter=args.jitter,pretrained_model=args.pretrain,dataset=args.dataset)
     train_Dataloader = Get_train_DataLoader(Dataset,batch_size=args.batch_size)
     val_Dataloader = Get_val_DataLoader(Dataset,batch_size=args.batch_size)
-    
-    ## get Model
-    if args.dataset != 'VeRi_ict':
-        net = models.ResNet(Dataset.n_id,n_layers=args.n_layer,pretrained=args.pretrain)
+
+    ## Get Model
+    if args.triplet:
+        net = models.TripletNet(models.ResNet(Dataset.n_id,n_layers=args.n_layer,pretrained=args.pretrain))
     else:
-        net = models.ICT_ResNet(Dataset.n_id,Dataset.n_color,Dataset.n_type,n_layers=args.n_layer,pretrained=args.pretrain)
+        if args.dataset != 'VeRi_ict':
+            net = models.ResNet(Dataset.n_id,n_layers=args.n_layer,pretrained=args.pretrain)
+        else:
+            net = models.ICT_ResNet(Dataset.n_id,Dataset.n_color,Dataset.n_type,n_layers=args.n_layer,pretrained=args.pretrain)
     if torch.cuda.is_available():
         net.cuda()
     
@@ -166,10 +236,13 @@ if __name__ == '__main__':
         print('total data:',len(Dataset))
         print('training data:',Dataset.n_train)
         print('validation data:',Dataset.n_val)
-        if args.dataset != 'VeRi_ict':
-            train(args,Dataset,train_Dataloader,val_Dataloader,net)
+        if args.triplet:
+            train_triplet(args, Dataset, train_Dataloader, val_Dataloader, net)
         else:
-            train_ict(args,Dataset,train_Dataloader,val_Dataloader,net)
+            if args.dataset != 'VeRi_ict':
+                train(args,Dataset,train_Dataloader,val_Dataloader,net)
+            else:
+                train_ict(args,Dataset,train_Dataloader,val_Dataloader,net)
 
 
 

@@ -43,11 +43,12 @@ if __name__ == '__main__':
     parser.add_argument('--gallery_txt',default=None,help='path to load gallery')
     parser.add_argument('--query_txt',default=None,help='path to load query')
     parser.add_argument('--dis_mat',default=None,help='path to store distance')
+    parser.add_argument('--batch_size',default=64,help='batch_size for inferencing')
 
     args = parser.parse_args()
 
     print('loading model....')
-    model = ResNet_Loader(args.load_ckpt,args.n_layer,output_color=False)
+    model = ResNet_Loader(args.load_ckpt,args.n_layer,output_color=False,batch_size=64)
     
     with open(args.query_txt,'r') as f:
         query_txt = [q.strip() for q in f.readlines()]

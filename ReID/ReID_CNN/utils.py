@@ -80,7 +80,55 @@ class VReID_Dataset(Dataset):
     def __len__(self):
         return len(self.img_list)
             
+class TripletImage_Dataset(Dataset):
+    def __init__(self, db_txt, triplet_txt, resize=(224,224), crop=False, flip=False, jitter=0, imagenet_normalize=True, classification=False, val_split=0.2):
+        self.classification = classification
+        self.n_id = 1
 
+        # Load image list, class list
+        txt = np.loadtxt(db_txt, dtype=str)
+        self.imgs = txt[:, 0]
+        if self.classification: self.classes, self.n_id = Remap_Label(txt[:, 1].astype(int))
+        self.triplet = np.loadtxt(triplet_txt, dtype=int)
+        self.len = self.triplet.shape[0]
+
+        # Validation split
+        permute_idx = np.random.permutation(self.len)
+        self.val_index = permute_idx[:int(val_split*self.len)]
+        self.train_index = permute_idx[int(val_split*self.len):]
+        self.n_train = len(self.train_index)
+        self.n_val = len(self.val_index)
+
+        # Transform
+        trans = []
+        if crop:
+            trans.append(transforms.Resize((resize[0]+50, resize[1]+50)))
+            trans.append(transforms.RandomCrop(resize))
+        else:
+            trans.append(transforms.Resize(resize))
+        if flip: trans.append(transforms.RandomHorizontalFlip())
+        if jitter: trans.append(transforms.ColorJitter(brightness=jitter))
+        trans.append(transforms.ToTensor())
+        if imagenet_normalize:
+            trans.append(transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]))
+        self.transform = transforms.Compose(trans)
+        
+    def __getitem__(self, idx):
+        idx1, idx2, idx3 = self.triplet[idx, :]
+        output = {}
+        output['img1'] = Image.open(self.imgs[idx1])
+        output['img2'] = Image.open(self.imgs[idx2])
+        output['img3'] = Image.open(self.imgs[idx3])
+        for k in output.keys():
+            output[k] = self.transform(output[k])
+        if self.classification:
+            output['class1'] = self.classes[idx1]
+            output['class2'] = self.classes[idx2]
+            output['class3'] = self.classes[idx3]
+        return output
+
+    def __len__(self):
+        return self.len
 
 def Get_train_DataLoader(dataset,batch_size=128,shuffle=True,num_workers=6):
     sampler = SubsetRandomSampler(dataset.train_index)
@@ -89,6 +137,14 @@ def Get_train_DataLoader(dataset,batch_size=128,shuffle=True,num_workers=6):
 def Get_val_DataLoader(dataset,batch_size=128,shuffle=True,num_workers=6):
     sampler = SubsetRandomSampler(dataset.val_index)
     return DataLoader(dataset,batch_size = batch_size,sampler=sampler,num_workers=6)
+
+def Remap_Label(labels):
+    labels = labels - np.min(labels)
+    unique_label = np.unique(labels)
+    label_map = np.zeros(np.max(unique_label)+1, dtype=int)
+    for i, l in enumerate(unique_label.tolist()):
+        label_map[l] = i
+    return label_map[labels], len(unique_label)
 
 # def generating_train_test_info():
     # label_list = []
@@ -124,7 +180,7 @@ def Get_val_DataLoader(dataset,batch_size=128,shuffle=True,num_workers=6):
                 # te_file.write(img+' '+str(test_label_dict[label])+'\n')
 
 if __name__ == '__main__':
-    
+    '''
     pretrained = True
 
     D = VReID_Dataset(sys.argv[1],crop=True,flip=True,pretrained_model=pretrained)
@@ -133,9 +189,33 @@ if __name__ == '__main__':
     print('len:',len(D))
     print('n_id:',D.n_id)
     print('n_batch:',len(D)//128+1)
+    '''
+    #labels = (np.arange(10)+1)*10
+    #print(labels)
+    #labels = Remap_Label(labels)
+    #print(labels)
 
-    
-
-
+    dataset = TripletImage_Dataset(sys.argv[1], sys.argv[2], crop=True, flip=True, jitter=5, imagenet_normalize=True, classification=True)
+    train_loader = Get_train_DataLoader(dataset)
+    val_loader = Get_val_DataLoader(dataset)
+    print('len', len(dataset))
+    print('train n_batch', len(train_loader))
+    print('val n_batch', len(val_loader))
+    for data in train_loader:
+       print(data.keys())
+       print(data['img1'].size())
+       print(data['img2'].size())
+       print(data['img3'].size())
+       print(data['class1'])
+       print(data['class2'])
+       print(data['class3'])
+    for data in val_loader:
+       print(data.keys())
+       print(data['img1'].size())
+       print(data['img2'].size())
+       print(data['img3'].size())
+       print(data['class1'])
+       print(data['class2'])
+       print(data['class3'])
 
 
