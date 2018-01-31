@@ -150,7 +150,7 @@ if __name__ == '__main__':
     Dataset = VReID_Dataset(args.info,crop=args.crop,flip=args.flip,jitter=args.jitter,pretrained_model=args.pretrain,dataset=args.dataset)
     train_Dataloader = Get_train_DataLoader(Dataset,batch_size=args.batch_size)
     val_Dataloader = Get_val_DataLoader(Dataset,batch_size=args.batch_size)
-
+    
     ## get Model
     if args.dataset != 'VeRi_ict':
         net = models.ResNet(Dataset.n_id,n_layers=args.n_layer,pretrained=args.pretrain)
