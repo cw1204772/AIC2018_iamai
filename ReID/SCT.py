@@ -158,6 +158,9 @@ parser.add_argument('--window', default=15, type=int, help='how many frames will
 parser.add_argument('--th', default=200, type=int, help='feature distance threshold')
 parser.add_argument('output_csv', help='output csv file')
 parser.add_argument('--verbose', action='store_true', help='verbose')
+parser.add_argument('--reid_model', required=True, type=str, help='reid cnn model')
+parser.add_argument('--n_layers', type=int, required=True, help='# of layers of reid_model')
+parser.add_argument('--batch_size', type=int, default=32, help='batch size for reid cnn model')
 opt = parser.parse_args()
 os.system('mkdir -p %s' % opt.temp_dir)
 os.system('rm -rf %s/*' % opt.temp_dir)
@@ -184,7 +187,8 @@ while True:
   if not ret: break
   framenumber += 1
   pbar.update(framenumber)
-   
+  
+  frame[:, :, [0,2]] = frame[:, :, [2,0]]
   bboxs = detections[detections[:,0]==framenumber, :]
   bboxs = bboxs.reshape(-1, detections.shape[1])
   for i in range(bboxs.shape[0]):
@@ -214,7 +218,7 @@ for id_ in trackers.keys():
 # Use reid-CNN to extract feature
 print('Stage 2/3: Extract re-id feature')
 imgs = [os.path.join(opt.temp_dir, img) for img in os.listdir(opt.temp_dir)]
-reid_model = ResNet_Loader('./ReID_CNN/model/model_12.ckpt', n_layer=18, batch_size=32)
+reid_model = ResNet_Loader(opt.reid_model, n_layer=opt.n_layers, batch_size=opt.batch_size)
 features = reid_model.inference(imgs)
 features = features.numpy()
 np.set_printoptions(threshold=100)
@@ -264,7 +268,7 @@ for t in trackers_sort_by_dead_time:
   t.write_file(f)
 f.close()
 
-os.system('rm -rf %s' % opt.temp_dir)
+#os.system('rm -rf %s' % opt.temp_dir)
 
 
 

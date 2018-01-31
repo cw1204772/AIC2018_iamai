@@ -24,7 +24,7 @@ python3 Tracking/iou-tracker/demo.py -d <detection_csv> -o <output_csv> -sl 0.1 
 **Use in Single Camera Tracking**
 
 ```
-python3 ReID/ReID.py <tracking_csv> <video> <output_csv> --window 15 --th 150
+python3 ReID/SCT.py <tracking_csv> <video> <output_csv> --window 15 --th 150 --reid_model <reid_model> --n_layers <n_layers>
 ```
 
 **Train on VeRi Dataset**
