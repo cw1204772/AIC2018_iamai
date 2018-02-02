@@ -5,6 +5,7 @@ import torch.optim as optim
 import torch.backends.cudnn as cudnn
 from utils import VReID_Dataset, TripletImage_Dataset, Get_train_DataLoader, Get_val_DataLoader
 from loss import TripletLoss
+from logger import Logger
 import models
 import sys
 from tqdm import tqdm
@@ -45,7 +46,8 @@ def train_ict(args,Dataset,train_Dataloader,val_Dataloader,net):
             pbar.set_postfix({'loss':'%.2f'%(loss.data[0])})
         pbar.close()
         print('Training total loss = %.3f'%(epoch_loss/iter_count))
-        torch.save(net.state_dict(),os.path.join(args.save_model_dir,'model_%d.ckpt'%(e)))
+        if e % args.save_every_n_epoch == 0:
+            torch.save(net.state_dict(),os.path.join(args.save_model_dir,'model_%d.ckpt'%(e)))
         print('start validation')
         correct_i = []
         correct_c = []
@@ -109,7 +111,8 @@ def train(args,Dataset,train_Dataloader,val_Dataloader,net):
             pbar.set_postfix({'loss':'%.2f'%(loss.data[0])})
         pbar.close()
         print('Training total loss = %.3f'%(epoch_loss/iter_count))
-        torch.save(net.state_dict(),os.path.join(args.save_model_dir,'model_%d.ckpt'%(e)))
+        if e % args.save_every_n_epoch == 0:
+            torch.save(net.state_dict(),os.path.join(args.save_model_dir,'model_%d.ckpt'%(e)))
         print('start validation')
         net.eval()
         correct = []
@@ -135,6 +138,7 @@ def train_triplet(args,Dataset,train_Dataloader,val_Dataloader,net):
     optimizer = optim.Adam(net.parameters(), lr=args.lr)
     criterion_triplet = TripletLoss(margin=margin, batch_hard=args.batch_hard)
     if args.with_class: criterion_class = nn.CrossEntropyLoss()
+    logger = Logger(args.save_model_dir)
     
     for e in range(args.n_epochs):
         pbar = tqdm(total=len(Dataset.train_index),ncols=100,leave=True)
@@ -151,34 +155,29 @@ def train_triplet(args,Dataset,train_Dataloader,val_Dataloader,net):
             classes = samples['class'].view(samples['class'].size(0)*samples['class'].size(1))
             b_img = Variable(imgs).cuda()
             b_class = Variable(classes).cuda()
-            #torch.set_printoptions(precision=2, threshold=100)
-            #print('----------img---------')
-            #print(b_img)
-            #print('----------class------------')
-            #print(b_class)
             b_size = samples['class'].size(0)
             net.zero_grad()
             #forward
             pred_class, pred_feat = net(b_img)
-            #print('-------------pred_feat---------------')
-            #print(pred_feat)
-            loss = criterion_triplet(pred_feat, b_class).mean()
+            b_loss = criterion_triplet(pred_feat, b_class)
+            loss = b_loss.mean()
             if args.with_class:
                 loss += criterion_class(pred_class, b_class)
             epoch_loss += loss.data[0]
-            #print('-------------loss: %f----------' % loss.data[0])
-            #if i_batch == 1: sys.exit()
             # backward
-            #loss.register_hook(print)
-            #pred_feat.register_hook(print)
             loss.backward()
-
             optimizer.step()
+
+            n = e + float(i_batch)/len(train_Dataloader)
+            logger.log_loss(n, b_loss.data.cpu().numpy())
+            logger.log_feat(n, pred_feat.data.cpu().numpy())
             pbar.update(b_size)
             pbar.set_postfix({'loss':'%.2f'%(loss.data[0])})
         pbar.close()
         print('Training total loss = %.3f'%(epoch_loss/iter_count))
-        torch.save(net.state_dict(),os.path.join(args.save_model_dir,'model_%d.ckpt'%(e)))
+        if e % args.save_every_n_epoch == 0:
+            torch.save(net.state_dict(),os.path.join(args.save_model_dir,'model_%d.ckpt'%(e)))
+        logger.plot()
         print('start validation')
         net.eval()
         correct = []
@@ -191,9 +190,9 @@ def train_triplet(args,Dataset,train_Dataloader,val_Dataloader,net):
             b_img = Variable(imgs, volatile=True).cuda()
             b_class = Variable(classes, volatile=True).cuda()
             pred_class, pred_feat = net(b_img)
-            b_loss = criterion_triplet(pred_feat, b_class).data.cpu().numpy()
+            b_loss = criterion_triplet(pred_feat, b_class).data.cpu().numpy().squeeze()
             for x in range(b_loss.shape[0]):
-                if b_loss[x, :] < 1e-3:
+                if b_loss[x] < 1e-3:
                     correct.append(1)
                 else:
                     correct.append(0)
@@ -224,7 +223,7 @@ if __name__ == '__main__':
     parser.add_argument('--class_in_batch',type=int,default=32,help='# of class in a batch for triplet training')
     parser.add_argument('--image_per_class_in_batch',type=int,default=4,help='# of images of each class in a batch for triplet training')
     parser.add_argument('--batch_hard',action='store_true',help='whether to use batch_hard for triplet loss')
-    
+    parser.add_argument('--save_every_n_epoch',type=int,default=1,help='save model every n epoch')
     args = parser.parse_args()
 
     ## Get Dataset & DataLoader

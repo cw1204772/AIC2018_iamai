@@ -45,7 +45,7 @@ cd ReID/ReID_CNN
 
    * Train triplet model with VeRi dataset
      ```
-     python3 train.py --info VeRi_train_info.txt --n_epochs 20 --save_model_dir ./ckpt_2 --n_layer 18 --margin soft --class_in_batch 32 --triplet --lr 0.001 --batch_hard
+     python3 train.py --info VeRi_train_info.txt --n_epochs 1500 --save_model_dir ./ckpt_2 --n_layer 18 --margin soft --class_in_batch 32 --triplet --lr 0.001 --batch_hard --save_every_n_epoch 50
      ``` 
 
 3. dump distance matrix
