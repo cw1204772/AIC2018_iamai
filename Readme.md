@@ -21,15 +21,15 @@ python3 Tracking/iou-tracker/demo.py -d <detection_csv> -o <output_csv> -sl 0.1 
 
 ## ReID
 
-**Use in Single Camera Tracking**
-
+### Use in Single Camera Tracking
 ```
 python3 ReID/SCT.py <tracking_csv> <video> <output_csv> --window 15 --th 150 --reid_model <reid_model> --n_layers <n_layers>
 ```
 
-**Train on VeRi Dataset**
-
-`cd ReID/ReID_CNN`
+### Train on VeRi Dataset
+```
+cd ReID/ReID_CNN
+```
 
 1. Create train, query, gallery info .txt files
    ```
@@ -45,14 +45,14 @@ python3 ReID/SCT.py <tracking_csv> <video> <output_csv> --window 15 --th 150 --r
 
    * Train triplet model with VeRi dataset
      ```
-     python3 train.py --info VeRi_train_info.txt --triplet VeRi_triplet.txt --lr 0.001 --batch_size 64 --n_epochs 20 --save_model_dir ./ckpt --n_layer 18 --margin 2
+     python3 train.py --info VeRi_train_info.txt --n_epochs 20 --save_model_dir ./ckpt_2 --n_layer 18 --margin soft --class_in_batch 32 --triplet --lr 0.001 --batch_hard
      ``` 
 
 3. dump distance matrix
-``` 
-python3 compute_VeRi_dis.py [--load_ckpt <model_path>][--n_layer <ResNet_layer>][--gallery_txt <path_to_txt>]
-                            [--query_txt <path_to_txt>][--dis_mat <path_and_filename_to_store_mat_file>]
 ```
+python3 compute_VeRi_dis.py --load_ckpt <model_path> --n_layer <Resnet_layer> --gallery_txt VeRi_gallery_info.txt --query_txt VeRi_query_info.txt --dis_mat dist_CNN.mat 
+```
+
 4. compute cmc curve
 ```  
   1. open matlab in the "VeRi_cmc/" directory

@@ -3,7 +3,8 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
-from utils import VReID_Dataset,TripletImage_Dataset,Get_train_DataLoader,Get_val_DataLoader
+from utils import VReID_Dataset, TripletImage_Dataset, Get_train_DataLoader, Get_val_DataLoader
+from loss import TripletLoss
 import models
 import sys
 from tqdm import tqdm
@@ -129,39 +130,47 @@ def train(args,Dataset,train_Dataloader,val_Dataloader,net):
         file.close()
 
 def train_triplet(args,Dataset,train_Dataloader,val_Dataloader,net):
+    margin = args.margin if args.margin=='soft' else float(args.margin)
 
     optimizer = optim.Adam(net.parameters(), lr=args.lr)
-    criterion_triplet = nn.MarginRankingLoss(margin=args.margin)
+    criterion_triplet = TripletLoss(margin=margin, batch_hard=args.batch_hard)
     if args.with_class: criterion_class = nn.CrossEntropyLoss()
     
     for e in range(args.n_epochs):
-        
         pbar = tqdm(total=len(Dataset.train_index),ncols=100,leave=True)
         pbar.set_description('Epoch %d'%(e))
 
         epoch_loss = 0
         iter_count = 0
-        for i_batch,samples in enumerate(train_Dataloader):
+        for i_batch, samples in enumerate(train_Dataloader):
             iter_count +=1
-            b_img1 = Variable(samples['img1']).cuda()
-            b_img2 = Variable(samples['img2']).cuda()
-            b_img3 = Variable(samples['img3']).cuda()
-            if args.with_class:
-                b_class1 = Variable(samples['class1']).cuda()
-                b_class2 = Variable(samples['class2']).cuda()
-                b_class3 = Variable(samples['class3']).cuda()
-            b_size = b_img1.size(0)
-            target = Variable(-1*torch.ones(b_size, 1)).cuda()
+            imgs = samples['img'].view(samples['img'].size(0)*samples['img'].size(1),
+                                       samples['img'].size(2), 
+                                       samples['img'].size(3),
+                                       samples['img'].size(4))
+            classes = samples['class'].view(samples['class'].size(0)*samples['class'].size(1))
+            b_img = Variable(imgs).cuda()
+            b_class = Variable(classes).cuda()
+            #torch.set_printoptions(precision=2, threshold=100)
+            #print('----------img---------')
+            #print(b_img)
+            #print('----------class------------')
+            #print(b_class)
+            b_size = samples['class'].size(0)
             net.zero_grad()
             #forward
-            dist_pos, dist_neg, b_pred1, b_pred2, b_pred3 = net(b_img1, b_img2, b_img3)
-            loss = criterion_triplet(dist_pos, dist_neg, target)
+            pred_class, pred_feat = net(b_img)
+            #print('-------------pred_feat---------------')
+            #print(pred_feat)
+            loss = criterion_triplet(pred_feat, b_class).mean()
             if args.with_class:
-                loss += criterion_class(b_pred1, b_class1)
-                loss += criterion_class(b_pred2, b_class2)
-                loss += criterion_class(b_pred3, b_class3)
+                loss += criterion_class(pred_class, b_class)
             epoch_loss += loss.data[0]
+            #print('-------------loss: %f----------' % loss.data[0])
+            #if i_batch == 1: sys.exit()
             # backward
+            #loss.register_hook(print)
+            #pred_feat.register_hook(print)
             loss.backward()
 
             optimizer.step()
@@ -169,18 +178,22 @@ def train_triplet(args,Dataset,train_Dataloader,val_Dataloader,net):
             pbar.set_postfix({'loss':'%.2f'%(loss.data[0])})
         pbar.close()
         print('Training total loss = %.3f'%(epoch_loss/iter_count))
-        torch.save(net.net.state_dict(),os.path.join(args.save_model_dir,'model_%d.ckpt'%(e)))
+        torch.save(net.state_dict(),os.path.join(args.save_model_dir,'model_%d.ckpt'%(e)))
         print('start validation')
         net.eval()
         correct = []
-        for i,sample in enumerate(val_Dataloader):
-            img1 = Variable(sample['img1'],volatile=True).cuda()
-            img2 = Variable(sample['img2'],volatile=True).cuda()
-            img3 = Variable(sample['img3'],volatile=True).cuda()
-            dist_pos, dist_neg, _, _, _ = net(img1,img2,img3)
-            dist_pos, dist_neg = dist_pos.data, dist_neg.data
-            for x in range(dist_pos.size(0)):
-                if dist_pos[x, 0] < dist_neg[x, 0]:
+        for i,samples in enumerate(val_Dataloader):
+            imgs = samples['img'].view(samples['img'].size(0)*samples['img'].size(1),
+                                       samples['img'].size(2),
+                                       samples['img'].size(3),
+                                       samples['img'].size(4))
+            classes = samples['class'].view(samples['class'].size(0)*samples['class'].size(1))
+            b_img = Variable(imgs, volatile=True).cuda()
+            b_class = Variable(classes, volatile=True).cuda()
+            pred_class, pred_feat = net(b_img)
+            b_loss = criterion_triplet(pred_feat, b_class).data.cpu().numpy()
+            for x in range(b_loss.shape[0]):
+                if b_loss[x, :] < 1e-3:
                     correct.append(1)
                 else:
                     correct.append(0)
@@ -205,22 +218,31 @@ if __name__ == '__main__':
     parser.add_argument('--save_model_dir',default=None,help='path to save model')
     parser.add_argument('--n_layer',type=int,default=18,help='number of Resnet layers')
     parser.add_argument('--dataset',default='VeRi',help='which dataset:VeRi or VeRi_ict')
-    parser.add_argument('--triplet',default=None,help='white-space seperated txt containing triplet sample in each row, with column order (anchor, positve, negative)')
-    parser.add_argument('--with_class',action='store_true', help='whether to train with class label during triplet training')
-    parser.add_argument('--margin',type=int,default=0,help='margin of triplet loss')
+    parser.add_argument('--triplet',action='store_true',help='use triplet training')
+    parser.add_argument('--with_class',action='store_true',help='whether to train with class label during triplet training')
+    parser.add_argument('--margin',type=str,default='0',help='margin of triplet loss ("soft" or float)')
+    parser.add_argument('--class_in_batch',type=int,default=32,help='# of class in a batch for triplet training')
+    parser.add_argument('--image_per_class_in_batch',type=int,default=4,help='# of images of each class in a batch for triplet training')
+    parser.add_argument('--batch_hard',action='store_true',help='whether to use batch_hard for triplet loss')
+    
     args = parser.parse_args()
 
     ## Get Dataset & DataLoader
     if args.triplet:
-        Dataset = TripletImage_Dataset(args.info, args.triplet, crop=args.crop, flip=args.flip, jitter=args.jitter, imagenet_normalize=args.pretrain, classification=args.with_class)
+        Dataset = TripletImage_Dataset(args.info, crop=args.crop, flip=args.flip, jitter=args.jitter, 
+                                       imagenet_normalize=args.pretrain, 
+                                       class_in_batch=args.class_in_batch,
+                                       image_per_class_in_batch=args.image_per_class_in_batch)
+        train_Dataloader = Get_train_DataLoader(Dataset,batch_size=args.class_in_batch)
+        val_Dataloader = Get_val_DataLoader(Dataset,batch_size=args.class_in_batch)
     else:
         Dataset = VReID_Dataset(args.info,crop=args.crop,flip=args.flip,jitter=args.jitter,pretrained_model=args.pretrain,dataset=args.dataset)
-    train_Dataloader = Get_train_DataLoader(Dataset,batch_size=args.batch_size)
-    val_Dataloader = Get_val_DataLoader(Dataset,batch_size=args.batch_size)
+        train_Dataloader = Get_train_DataLoader(Dataset,batch_size=args.batch_size)
+        val_Dataloader = Get_val_DataLoader(Dataset,batch_size=args.batch_size)
 
     ## Get Model
     if args.triplet:
-        net = models.TripletNet(models.ResNet(Dataset.n_id,n_layers=args.n_layer,pretrained=args.pretrain))
+        net = models.ResNet(Dataset.n_id,n_layers=args.n_layer,pretrained=args.pretrain)
     else:
         if args.dataset != 'VeRi_ict':
             net = models.ResNet(Dataset.n_id,n_layers=args.n_layer,pretrained=args.pretrain)

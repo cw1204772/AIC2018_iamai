@@ -11,8 +11,6 @@ import time as time
 import models
 import numpy as np
 
-
-
 class VReID_Dataset(Dataset):
     def __init__(self, txt_file,resize=(224,224),crop=False,flip=False,jitter=0,pretrained_model=True,dataset='VeRi'):
         
@@ -81,23 +79,27 @@ class VReID_Dataset(Dataset):
         return len(self.img_list)
             
 class TripletImage_Dataset(Dataset):
-    def __init__(self, db_txt, triplet_txt, resize=(224,224), crop=False, flip=False, jitter=0, imagenet_normalize=True, classification=False, val_split=0.2):
-        self.classification = classification
-        self.n_id = 1
+    def __init__(self, db_txt, resize=(224,224), crop=False, flip=False, jitter=0, 
+                 imagenet_normalize=True, val_split=0.2, 
+                 class_in_batch=32, image_per_class_in_batch=4):
 
         # Load image list, class list
         txt = np.loadtxt(db_txt, dtype=str)
         self.imgs = txt[:, 0]
-        if self.classification: self.classes, self.n_id = Remap_Label(txt[:, 1].astype(int))
-        self.triplet = np.loadtxt(triplet_txt, dtype=int)
-        self.len = self.triplet.shape[0]
+        self.classes, self.n_id = Remap_Label(txt[:, 1].astype(int))
+        if not Check_Min_Sample_Per_Class(self.classes, image_per_class_in_batch): 
+            return ValueError('There is not enough samples per class! (Min {} samples required)'\
+                              .format(image_per_class_in_batch))
+        self.len = self.n_id
+        self.class_in_batch = class_in_batch
+        self.image_per_class_in_batch = image_per_class_in_batch
 
-        # Validation split
-        permute_idx = np.random.permutation(self.len)
-        self.val_index = permute_idx[:int(val_split*self.len)]
-        self.train_index = permute_idx[int(val_split*self.len):]
-        self.n_train = len(self.train_index)
-        self.n_val = len(self.val_index)
+        # Validation split (split according to id)
+        permute_idx = np.random.permutation(self.n_id)
+        self.val_index = permute_idx[:int(val_split*self.n_id)]
+        self.train_index = permute_idx[int(val_split*self.n_id):]
+        self.n_train = int(self.len * (1-val_split))
+        self.n_val = int(self.len * val_split)
 
         # Transform
         trans = []
@@ -114,17 +116,17 @@ class TripletImage_Dataset(Dataset):
         self.transform = transforms.Compose(trans)
         
     def __getitem__(self, idx):
-        idx1, idx2, idx3 = self.triplet[idx, :]
-        output = {}
-        output['img1'] = Image.open(self.imgs[idx1])
-        output['img2'] = Image.open(self.imgs[idx2])
-        output['img3'] = Image.open(self.imgs[idx3])
-        for k in output.keys():
-            output[k] = self.transform(output[k])
-        if self.classification:
-            output['class1'] = self.classes[idx1]
-            output['class2'] = self.classes[idx2]
-            output['class3'] = self.classes[idx3]
+        id = torch.arange(self.n_id).long()[idx]
+        final_idx = np.zeros((self.image_per_class_in_batch,))
+        select = np.nonzero(self.classes == id)[0]
+        select = np.random.permutation(select)[:self.image_per_class_in_batch]
+        output = {'img':[], 'class':[]}
+        for i in select.tolist():
+            img = Image.open(self.imgs[i])
+            output['img'].append(self.transform(img).unsqueeze(0))
+            output['class'].append(id)
+        output['img'] = torch.cat(output['img'], dim=0)
+        output['class'] = torch.Tensor(output['class'])
         return output
 
     def __len__(self):
@@ -145,6 +147,13 @@ def Remap_Label(labels):
     for i, l in enumerate(unique_label.tolist()):
         label_map[l] = i
     return label_map[labels], len(unique_label)
+
+def Check_Min_Sample_Per_Class(labels, min):
+    unique_labels = np.unique(labels)
+    for i in unique_labels.tolist():
+        if (labels == i).sum() < min:
+            return False
+    return True
 
 # def generating_train_test_info():
     # label_list = []
@@ -195,27 +204,20 @@ if __name__ == '__main__':
     #labels = Remap_Label(labels)
     #print(labels)
 
-    dataset = TripletImage_Dataset(sys.argv[1], sys.argv[2], crop=True, flip=True, jitter=5, imagenet_normalize=True, classification=True)
-    train_loader = Get_train_DataLoader(dataset)
-    val_loader = Get_val_DataLoader(dataset)
+    dataset = TripletImage_Dataset(sys.argv[1], crop=True, flip=True, jitter=5, imagenet_normalize=True)
+    train_loader = Get_train_DataLoader(dataset, batch_size=32, num_workers=1)
+    val_loader = Get_val_DataLoader(dataset, batch_size=32)
     print('len', len(dataset))
     print('train n_batch', len(train_loader))
     print('val n_batch', len(val_loader))
     for data in train_loader:
        print(data.keys())
-       print(data['img1'].size())
-       print(data['img2'].size())
-       print(data['img3'].size())
-       print(data['class1'])
-       print(data['class2'])
-       print(data['class3'])
+       print(data['img'][0].size())
+       print(data['class'][0].size())
+       exit(-1)
     for data in val_loader:
        print(data.keys())
-       print(data['img1'].size())
-       print(data['img2'].size())
-       print(data['img3'].size())
-       print(data['class1'])
-       print(data['class2'])
-       print(data['class3'])
+       print(data['img'])
+       print(data['class'])
 
 
