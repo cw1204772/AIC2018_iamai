@@ -80,7 +80,7 @@ class VReID_Dataset(Dataset):
             
 class TripletImage_Dataset(Dataset):
     def __init__(self, db_txt, resize=(224,224), crop=False, flip=False, jitter=0, 
-                 imagenet_normalize=True, val_split=0.2, 
+                 imagenet_normalize=True, val_split=0.01, 
                  class_in_batch=32, image_per_class_in_batch=4):
 
         # Load image list, class list
@@ -126,7 +126,7 @@ class TripletImage_Dataset(Dataset):
             output['img'].append(self.transform(img).unsqueeze(0))
             output['class'].append(id)
         output['img'] = torch.cat(output['img'], dim=0)
-        output['class'] = torch.Tensor(output['class'])
+        output['class'] = torch.LongTensor(output['class'])
         return output
 
     def __len__(self):
