@@ -138,7 +138,7 @@ def train_triplet(args,Dataset,train_Dataloader,val_Dataloader,net):
     optimizer = optim.Adam(net.parameters(), lr=args.lr)
     criterion_triplet = TripletLoss(margin=margin, batch_hard=args.batch_hard)
     if args.with_class: criterion_class = nn.CrossEntropyLoss()
-    logger = Logger(args.save_model_dir)
+    logger = Logger(args.save_model_dir, prefix='train_')
     
     for e in range(args.n_epochs):
         pbar = tqdm(total=len(Dataset.train_index),ncols=100,leave=True)
@@ -162,15 +162,16 @@ def train_triplet(args,Dataset,train_Dataloader,val_Dataloader,net):
             b_loss = criterion_triplet(pred_feat, b_class)
             loss = b_loss.mean()
             if args.with_class:
-                loss += criterion_class(pred_class, b_class)
+                loss += args.class_w * criterion_class(pred_class, b_class)
             epoch_loss += loss.data[0]
             # backward
             loss.backward()
             optimizer.step()
 
-            n = e + float(i_batch)/len(train_Dataloader)
-            logger.log_loss(n, b_loss.data.cpu().numpy())
-            logger.log_feat(n, pred_feat.data.cpu().numpy())
+            logger.append_epoch(e + float(i_batch)/len(train_Dataloader))
+            logger.append_loss(b_loss.data.cpu().numpy())
+            logger.append_feat(pred_feat.data.cpu().numpy())
+            logger.write_log()
             pbar.update(b_size)
             pbar.set_postfix({'loss':'%.2f'%(loss.data[0])})
         pbar.close()
@@ -224,6 +225,7 @@ if __name__ == '__main__':
     parser.add_argument('--image_per_class_in_batch',type=int,default=4,help='# of images of each class in a batch for triplet training')
     parser.add_argument('--batch_hard',action='store_true',help='whether to use batch_hard for triplet loss')
     parser.add_argument('--save_every_n_epoch',type=int,default=1,help='save model every n epoch')
+    parser.add_argument('--class_w',type=float,help='wieghting of classification loss when triplet training')
     args = parser.parse_args()
 
     ## Get Dataset & DataLoader
