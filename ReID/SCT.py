@@ -105,10 +105,10 @@ def single_camera_tracking(tracks, window, feature_th, bbox_th, verbose):
                     min_score = score
         if min_j != -1 and min_score < feature_th:
             if verbose: print('===> merge to track %d!' % tracks[min_j].id)
-            tracks[j].merge(tracks[min_j])
+            tracks[i].merge(tracks[min_j])
             delete_list.append(i)
 
-    for i in reversed(delete_list):
+    for i in reversed(sorted(delete_list)):
         del tracks[i]
     return tracks
 

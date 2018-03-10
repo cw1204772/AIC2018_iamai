@@ -9,8 +9,10 @@ class Track(object):
     def import_features(self, features):
         self.features = features
     def birth_time(self):
-        return np.min(self.dets[:,0])
+        if self.dets.shape[0] == 0: return -1
+        else: return np.min(self.dets[:,0])
     def dead_time(self):
+        if self.dets.shape[0] == 0: return int('inf')
         return np.max(self.dets[:,0])
     def sct_match(self, t, bbox_dist_th):
         pos1 = self.dets[-1,2:6]
@@ -24,6 +26,7 @@ class Track(object):
         t.dets = np.concatenate([self.dets, t.dets], axis=0)
         t.dets[:,1] = t.id
         t.features = np.concatenate([self.features, t.features], axis=0)
+        self.dets = np.zeros((0,0))
     def summarized_feature(self):
         return np.mean(self.features, axis=0)
     def assign_seq_id(self, seq_id):

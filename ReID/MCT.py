@@ -114,7 +114,7 @@ if __name__ == '__main__':
             with open(pkl_name, 'rb') as f:
                 tracks = pickle.load(f)
             for t in tracks:
-                t.assign_seq_id(i)
+                t.assign_seq_id(i+1)
             single_cam_tracks += tracks
         multi_cam_tracks.append(single_cam_tracks)
 
