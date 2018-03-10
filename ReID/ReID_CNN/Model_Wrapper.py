@@ -5,6 +5,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 from torchvision import transforms
 from PIL import Image
+from progressbar import Bar, ETA, ReverseBar, Percentage, ProgressBar, Timer
 PACKAGE_PARENT = '..'
 SCRIPT_DIR = os.path.dirname(os.path.realpath(os.path.join(os.getcwd(), os.path.expanduser(__file__))))
 sys.path.append(os.path.normpath(os.path.join(SCRIPT_DIR, PACKAGE_PARENT)))
@@ -55,6 +56,8 @@ class ResNet_Loader(object):
         feature_list = []
         color_list = []
         batch_list = []
+        widgets = [Timer(format='ET: %(elapsed)s'), Bar('>'), ' ', 'Inferencing: ', Percentage(), ' ', ReverseBar('<'), ETA()]
+        pbar = ProgressBar(widgets=widgets, max_value=len(file_name_list))
         for i,name in enumerate(file_name_list):
             img = Image.open(name)
             img = self.compose(img)
@@ -68,6 +71,8 @@ class ResNet_Loader(object):
                     feature_list.append(features.cpu().data)
                     color_list.append(colors.cpu().data)
                 batch_list = []
+                pbar.update(i)
+        pbar.finish()
         if len(batch_list)>0:
             if self.output_color == False:
                 features = self.model(Variable(torch.stack(batch_list)).cuda())

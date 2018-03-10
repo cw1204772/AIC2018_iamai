@@ -37,6 +37,7 @@ def dump_log(self,file,c):
     file.write('\n')
 
 def multi_camera_matching(opt,MCT):
+    print('multi camera matching...')
     if opt.cluster_method == 'k-means':
         from sklearn.cluster import KMeans
         # decide n_class to be clustered 

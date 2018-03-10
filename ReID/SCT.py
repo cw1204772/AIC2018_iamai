@@ -26,6 +26,7 @@ def parse_tracks(tracking_csv):
 
 def extract_images(tracks, video, sample_interval, save_dir):
     """Extract images for each track"""
+    print('extracting images...')
     pathlib.Path(save_dir).mkdir(parents=True, exist_ok=True)
     if len(os.listdir(save_dir)) != 0:
         print('temp_dir is not empty, using already extracted images!')
@@ -38,7 +39,6 @@ def extract_images(tracks, video, sample_interval, save_dir):
     imgs_info = np.concatenate(imgs_info, axis=0)
     imgs_info[:, 4:6] += imgs_info[:, 2:4] # x0,y0,x1,y1
     n_imgs = imgs_info.shape[0]
-    print('Number of images to crop:', imgs_info.shape[0])
 
     # Sort image info by frames
     sort_idx = np.argsort(imgs_info[:, 0])
@@ -72,7 +72,7 @@ def extract_images(tracks, video, sample_interval, save_dir):
 
 def extract_features(tracks, temp_dir, reid_model, n_layers, batch_size):
     """Extract features, then import features back into tracks"""
-    # Extract features
+    print('extracting features...')
     img_names = sorted(os.listdir(temp_dir))
     img_paths = [os.path.join(temp_dir, img) for img in img_names]
     reid_model = ResNet_Loader(reid_model, n_layers, batch_size)
@@ -86,11 +86,13 @@ def extract_features(tracks, temp_dir, reid_model, n_layers, batch_size):
 
 def single_camera_tracking(tracks, window, feature_th, bbox_th, verbose):
     """Single camera tracking"""
+    print('single camera tracking...')
     dead_time = [t.dead_time() for t in tracks]
     sorted_idx = np.argsort(dead_time)
 
     delete_list = []
-    for i in sorted_idx:
+    pbar = ProgressBar(max_value=len(tracks))
+    for n,i in enumerate(sorted_idx):
         if verbose: print('---------- Track %d -----------' % tracks[i].id)
         t0 = tracks[i].dead_time()
         min_j = -1
@@ -107,6 +109,8 @@ def single_camera_tracking(tracks, window, feature_th, bbox_th, verbose):
             if verbose: print('===> merge to track %d!' % tracks[min_j].id)
             tracks[i].merge(tracks[min_j])
             delete_list.append(i)
+        pbar.update(n)
+    pbar.finish()
 
     for i in reversed(sorted(delete_list)):
         del tracks[i]
