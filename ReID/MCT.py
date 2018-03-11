@@ -71,7 +71,7 @@ def multi_camera_matching(opt,MCT):
             # Trackers.sort(key=lambda x:x.get_head_frame())
             if len(Trackers) > 1:
                 for t in range(len(Trackers)-1):
-                    Trackers[-1].mct_merge(Trackers[t])
+                    Trackers[t].merge(Trackers[-1])
                 classified_Trackers[c] = Trackers[-1]
             else:
                 classified_Trackers[c] = Trackers[-1]
@@ -85,7 +85,7 @@ def multi_camera_matching(opt,MCT):
         #    tracker.dump_log(file,c)
         #file.close()
         
-        return MCT # TODO: should only output tracks that travel all 4 locations
+        return list(classified_Trackers.values()) # TODO: should only output tracks that travel all 4 locations
 
 if __name__ == '__main__':
     # IO
@@ -106,7 +106,7 @@ if __name__ == '__main__':
     
     # Load and initialize tracks objs with seq names
     multi_cam_tracks = []
-    i = 0
+    seq_id = 1
     for i, l in enumerate(loc):
         single_cam_tracks = []
         for n in range(1,loc_n_seq[i]+1):
@@ -115,7 +115,8 @@ if __name__ == '__main__':
             with open(pkl_name, 'rb') as f:
                 tracks = pickle.load(f)
             for t in tracks:
-                t.assign_seq_id(i+1)
+                t.assign_seq_id(seq_id)
+            seq_id += 1
             single_cam_tracks += tracks
         multi_cam_tracks.append(single_cam_tracks)
 
@@ -124,9 +125,8 @@ if __name__ == '__main__':
 
     # Output to file
     dets = []
-    for t0 in multi_cam_tracks:
-        for t1 in t0:
-            dets.append(t1.dump())
+    for t in tracks:
+        dets.append(t.dump())
     dets = np.concatenate(dets, axis=0)
     dets = np.concatenate([dets[:,:7], -1*np.ones((dets.shape[0],1)), dets[:,[7]]], axis=1)
     np.savetxt('track3.txt', dets, fmt='%f')
