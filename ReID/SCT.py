@@ -11,16 +11,22 @@ import sys
 import pathlib
 import pickle
 
-def parse_tracks(tracking_csv):
+def parse_tracks(tracking_csv, size_th):
     """Read tracking csv to Track obj"""
-    # Split detections by id 
+    print('parsing tracks...')
     dets = np.loadtxt(tracking_csv, delimiter=',')
+    # Filter detections by size
+    cond1 = dets[:,4] < size_th
+    cond2 = dets[:,5] < size_th
+    dets = np.delete(dets, np.where(cond1 | cond2)[0], axis=0)
+
+    # Split detections by id 
     sort_idx = np.argsort(dets[:, 1])
     dets = dets[sort_idx, :7]
     det_blocks = np.split(dets, np.where(np.diff(dets[:, 1]))[0]+1, axis=0)
 
     tracks = []
-    for i, b in enumerate(det_blocks):
+    for b in det_blocks:
         tracks.append(Track(b))
     return tracks
 
@@ -56,6 +62,7 @@ def extract_images(tracks, video, sample_interval, save_dir):
         if not ret: break
         if i == len(imgs_info): break
         if framenumber == imgs_info[i][0,0]:
+            frame = frame[:,:,[2,1,0]]
             for j in range(imgs_info[i].shape[0]):
                 id = imgs_info[i][j, 1].astype(int)
                 x0, y0 = imgs_info[i][j, 2:4].astype(int)
@@ -79,9 +86,12 @@ def extract_features(tracks, temp_dir, reid_model, n_layers, batch_size):
     features = reid_model.inference(img_paths).numpy()
 
     # Import features to tracks
-    for t in tracks: 
-         idxs = [i for i,n in enumerate(img_names) if int(n.split('_')[0])==t.id]
-         t.import_features(features[idxs, :])
+    # (Detections should already be sorted by id)
+    img_ids = np.array([int(n.split('_')[0]) for n in img_names])
+    feature_blocks = np.split(features, np.where(np.diff(img_ids))[0]+1, axis=0)
+    assert len(feature_blocks)==len(tracks)
+    for i,t in enumerate(tracks):
+         t.import_features(feature_blocks[i])
     return tracks
 
 def single_camera_tracking(tracks, window, feature_th, bbox_th, verbose):
@@ -89,6 +99,7 @@ def single_camera_tracking(tracks, window, feature_th, bbox_th, verbose):
     print('single camera tracking...')
     dead_time = [t.dead_time() for t in tracks]
     sorted_idx = np.argsort(dead_time)
+    birth_time = np.array([t.birth_time() for t in tracks])
 
     delete_list = []
     pbar = ProgressBar(max_value=len(tracks))
@@ -97,17 +108,17 @@ def single_camera_tracking(tracks, window, feature_th, bbox_th, verbose):
         t0 = tracks[i].dead_time()
         min_j = -1
         min_score = float('inf')
-        for j in range(len(tracks)):
-            t1 = tracks[j].birth_time()
-            if t0 < t1 and t1 - t0 < window:
-                score = tracks[i].sct_match(tracks[j], bbox_th)
-                if verbose: print('* matches track %d: %f' % (tracks[j].id, score))
-                if score < min_score:
-                    min_j = j
-                    min_score = score
+        candidates = np.where((birth_time>t0) & ((birth_time-t0)<window))[0].tolist()
+        for j in candidates:
+            score = tracks[i].sct_match(tracks[j], bbox_th)
+            if verbose: print('* matches track %d: %f' % (tracks[j].id, score))
+            if score < min_score:
+                min_j = j
+                min_score = score
         if min_j != -1 and min_score < feature_th:
             if verbose: print('===> merge to track %d!' % tracks[min_j].id)
             tracks[i].merge(tracks[min_j])
+            birth_time[min_j] = tracks[min_j].birth_time()
             delete_list.append(i)
         pbar.update(n)
     pbar.finish()
@@ -123,11 +134,12 @@ if __name__ == '__main__':
     parser.add_argument('tracking_csv', help='tracking result csv file')
     parser.add_argument('video', help='location of corresponding video')
     parser.add_argument('output', help='output tracks obj pickle')
-    parser.add_argument('--int', default=5, type=int, help='feature sampling interval in each track')
+    parser.add_argument('--int', default=10, type=int, help='feature sampling interval in each track')
     parser.add_argument('--temp_dir', default='./tmp', type=str, help='temp dir for saving img for reid')
     parser.add_argument('--window', default=15, type=int, help='how many frames will tracker search to revive')
     parser.add_argument('--f_th', default=200, type=float, help='feature distance threshold')
     parser.add_argument('--b_th', default=200, type=float, help='bbox distance threshold')
+    parser.add_argument('--s_th', default=50, type=float, help='bbox size thrshold')
     parser.add_argument('--verbose', action='store_true', help='verbose')
     parser.add_argument('--reid_model', required=True, type=str, help='reid cnn model')
     parser.add_argument('--n_layers', type=int, required=True, help='# of layers of reid_model')
@@ -135,7 +147,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Read tracks
-    tracks = parse_tracks(args.tracking_csv)
+    tracks = parse_tracks(args.tracking_csv, args.s_th)
    
     # Extract images
     extract_images(tracks, args.video, args.int, args.temp_dir)
