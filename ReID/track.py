@@ -35,8 +35,10 @@ class Track(object):
         self.dets = np.concatenate([self.dets, seq_ids], axis=1)
         self.dets = np.concatenate([self.dets, loc_ids], axis=1)
     def dump(self):
-        assert self.dets.shape[1] == 9
-        return self.dets[:, [7]+list(range(7))]
+        if self.dets.shape[1] == 9:
+            return self.dets[:, [7]+list(range(7))]
+        if self.dets.shape[1] == 7:
+            return self.dets
 
 def bbox_iou(bb1, bb2):
   x_left = max(bb1[0], bb2[0])

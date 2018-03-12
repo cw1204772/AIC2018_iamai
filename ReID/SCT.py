@@ -11,14 +11,10 @@ import sys
 import pathlib
 import pickle
 
-def parse_tracks(tracking_csv, size_th):
+def parse_tracks(tracking_csv):
     """Read tracking csv to Track obj"""
     print('parsing tracks...')
     dets = np.loadtxt(tracking_csv, delimiter=',')
-    # Filter detections by size
-    cond1 = dets[:,4] < size_th
-    cond2 = dets[:,5] < size_th
-    dets = np.delete(dets, np.where(cond1 | cond2)[0], axis=0)
 
     # Split detections by id 
     sort_idx = np.argsort(dets[:, 1])
@@ -133,13 +129,12 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('tracking_csv', help='tracking result csv file')
     parser.add_argument('video', help='location of corresponding video')
-    parser.add_argument('output', help='output tracks obj pickle')
+    parser.add_argument('output', help='output dir for track obj pickle & track csv')
     parser.add_argument('--int', default=10, type=int, help='feature sampling interval in each track')
     parser.add_argument('--temp_dir', default='./tmp', type=str, help='temp dir for saving img for reid')
     parser.add_argument('--window', default=15, type=int, help='how many frames will tracker search to revive')
     parser.add_argument('--f_th', default=200, type=float, help='feature distance threshold')
     parser.add_argument('--b_th', default=200, type=float, help='bbox distance threshold')
-    parser.add_argument('--s_th', default=50, type=float, help='bbox size thrshold')
     parser.add_argument('--verbose', action='store_true', help='verbose')
     parser.add_argument('--reid_model', required=True, type=str, help='reid cnn model')
     parser.add_argument('--n_layers', type=int, required=True, help='# of layers of reid_model')
@@ -147,7 +142,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Read tracks
-    tracks = parse_tracks(args.tracking_csv, args.s_th)
+    tracks = parse_tracks(args.tracking_csv)
    
     # Extract images
     extract_images(tracks, args.video, args.int, args.temp_dir)
@@ -160,8 +155,13 @@ if __name__ == '__main__':
 
     # Save track obj
     os.system('mkdir -p %s' % args.output)
-    file_name = args.video.split('/')[-1].replace('.mp4','.pkl')
-    with open(os.path.join(args.output,file_name), 'wb') as f:
+    file_name = args.video.split('/')[-1].split('.')[0]
+    with open(os.path.join(args.output, '%s.pkl'%file_name), 'wb') as f:
         pickle.dump(tracks, f, protocol=pickle.HIGHEST_PROTOCOL)
-    os.system('rm -r %s'%(args.temp_dir))
+    dets = []
+    for t in tracks:
+        dets.append(t.dump())
+    dets = np.concatenate(dets, axis=0)
+    np.savetxt(os.path.join(args.output, '%s.csv'%file_name), dets, delimiter=',', fmt='%f')
+    #os.system('rm -r %s'%(args.temp_dir))
 
