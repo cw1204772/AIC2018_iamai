@@ -67,11 +67,11 @@ python3 compute_VeRi_dis.py --load_ckpt <model_path> --n_layer <Resnet_layer> --
 Use it to draw csv file onto video.
 
 ```
-python3 visualize.py [-h] [--w W] [--h H] [--fps FPS] [--length LENGTH]
-                     [--delimiter DELIMITER] [--offset OFFSET]
-                     [--frame_pos FRAME_POS] [--bbox_pos BBOX_POS]
-                     [--id_pos ID_POS] [--score_pos SCORE_POS]
-                     [--score_th SCORE_TH] [--cam CAM] [--cam_pos CAM_POS]
-                     [--ss SS] [--wh_mode]
-                     INPUT_VIDEO OUTPUT_VIDEO LABEL_FILE MODE
+python3 Utils/visualize.py [-h] [--w W] [--h H] [--fps FPS] [--length LENGTH]
+                           [--delimiter DELIMITER] [--offset OFFSET]
+                           [--frame_pos FRAME_POS] [--bbox_pos BBOX_POS]
+                           [--id_pos ID_POS] [--score_pos SCORE_POS]
+                           [--score_th SCORE_TH] [--cam CAM] [--cam_pos CAM_POS]
+                           [--ss SS] [--wh_mode]
+                           INPUT_VIDEO OUTPUT_VIDEO LABEL_FILE MODE
 ```
