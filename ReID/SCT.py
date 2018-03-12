@@ -159,6 +159,9 @@ if __name__ == '__main__':
     tracks = single_camera_tracking(tracks, args.window, args.f_th, args.b_th, args.verbose)
 
     # Save track obj
-    with open(args.output, 'wb') as f:
+    os.system('mkdir -p %s' % args.output)
+    file_name = args.video.split('/')[-1].replace('.mp4','.pkl')
+    with open(os.path.join(args.output,file_name), 'wb') as f:
         pickle.dump(tracks, f, protocol=pickle.HIGHEST_PROTOCOL)
+    os.system('rm -r %s'%(args.temp_dir))
 

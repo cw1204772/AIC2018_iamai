@@ -29,11 +29,13 @@ class Track(object):
         self.dets = np.zeros((0,0))
     def summarized_feature(self):
         return np.mean(self.features, axis=0)
-    def assign_seq_id(self, seq_id):
+    def assign_seq_id(self, seq_id,loc_id):
         seq_ids = seq_id * np.ones((self.dets.shape[0],1))
+        loc_ids = loc_id * np.ones((self.dets.shape[0],1))
         self.dets = np.concatenate([self.dets, seq_ids], axis=1)
+        self.dets = np.concatenate([self.dets, loc_ids], axis=1)
     def dump(self):
-        assert self.dets.shape[1] == 8
+        assert self.dets.shape[1] == 9
         return self.dets[:, [7]+list(range(7))]
 
 def bbox_iou(bb1, bb2):

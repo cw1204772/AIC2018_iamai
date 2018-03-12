@@ -42,7 +42,9 @@ def multi_camera_matching(opt,MCT):
         from sklearn.cluster import KMeans
         # decide n_class to be clustered 
         n_tracker = sum([len(loc_tracker) for loc_tracker in MCT])
-        n_classes = n_tracker - 100 * (len(MCT)-1)
+        # n_classes = n_tracker - 100 * (len(MCT)-1)
+        # haven't decide
+        n_classes = 50
         
         all_features = []
         for i in range(len(MCT)):
@@ -51,10 +53,10 @@ def multi_camera_matching(opt,MCT):
         all_features = np.stack(all_features,axis=0)
 
         print('start kmeans')
-        Cluster = KMeans(n_clusters=n_classes,precompute_distances=True,n_jobs=-1)
+        Cluster = KMeans(n_clusters=n_classes,precompute_distances=True,n_jobs=-1,max_iter=500,n_init=15)
         class_output = Cluster.fit_predict(all_features)
         print('end kmeans')
-        
+        del all_features
         # dict order by clustered class
         classified_Trackers = defaultdict(list)
         count = 0
@@ -65,28 +67,18 @@ def multi_camera_matching(opt,MCT):
                 count += 1
         
         ##Check every cluster class 
+        Final_ID = []
         for c in classified_Trackers.keys():
             Trackers = classified_Trackers[c]
-            # maybe need to sort by start frames
-            # Trackers.sort(key=lambda x:x.get_head_frame())
-            if len(Trackers) > 1:
-                for t in range(len(Trackers)-1):
-                    Trackers[t].merge(Trackers[-1])
-                classified_Trackers[c] = Trackers[-1]
-            else:
-                classified_Trackers[c] = Trackers[-1]
+            if len(Trackers) >= 4:
+                for i in range(len(Trackers)-1):
+                    Trackers[i].merge(Trackers[-1])
+                locs = set(list(Trackers[-1].dets[:,-1]))
+                if locs & {1.,2.,3.,4.} == {1.,2.,3.,4.}:
+                    Final_ID.append(Trackers[-1])
+        del classified_Trackers
 
-        #visualize
-        #for c,tracker in classified_Trackers.items():
-        #    tracker.dump_img(opt,c)
-        # dump log 
-        #file = open(opt.log_txt,'w')
-        #for c,tracker in classified_Trackers.items():
-        #    tracker.dump_log(file,c)
-        #file.close()
-        
-        return list(classified_Trackers.values()) # TODO: should only output tracks that travel all 4 locations
-
+        return Final_ID 
 if __name__ == '__main__':
     # IO
     parser = argparse.ArgumentParser()
@@ -97,8 +89,8 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     # Create sequence names
-    loc = [1]#[1, 2, 3, 4]
-    loc_n_seq = [1]#[4, 6, 2, 3]
+    loc = [1, 2, 3, 4]
+    loc_n_seq = [1,1,1,1]#[4, 6, 2, 3]
     loc_list = []
     for i, l in enumerate(loc):
         for n in range(1,loc_n_seq[i]+1):
@@ -115,15 +107,18 @@ if __name__ == '__main__':
             with open(pkl_name, 'rb') as f:
                 tracks = pickle.load(f)
             for t in tracks:
-                t.assign_seq_id(seq_id)
+                t.assign_seq_id(seq_id,i+1)
             seq_id += 1
             single_cam_tracks += tracks
         multi_cam_tracks.append(single_cam_tracks)
-
     # Multi camera matching
+    # len of multi_cam_tracks is equal to the number of Locations
     tracks = multi_camera_matching(args, multi_cam_tracks)
 
     # Output to file
+    if tracks == []:
+        print('No class meets the constrain')
+        sys.exit()
     dets = []
     for t in tracks:
         dets.append(t.dump())
