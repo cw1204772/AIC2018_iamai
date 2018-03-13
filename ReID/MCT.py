@@ -93,22 +93,13 @@ if __name__ == '__main__':
     # Create sequence names
     loc = [1] #[1, 2, 3, 4]
     loc_n_seq = [4, 6, 2, 3]
-    '''
-    loc_list = []
-    for i, l in enumerate(loc):
-        for n in range(1,loc_n_seq[i]+1):
-            loc_list.append('Loc%d_%d' % (l, n))
-    '''
-    
-    seqs = [[1],[1],[2],[1]]
     
     # Load and initialize tracks objs with seq names
     multi_cam_tracks = []
     seq_id = 1
     for i, l in enumerate(loc):
         single_cam_tracks = []
-        #for n in range(1,loc_n_seq[i]+1):
-        for n in seqs[i]:
+        for n in range(1,loc_n_seq[i]+1):
             name = 'Loc%d_%d' % (l, n)
             pkl_name = os.path.join(args.tracks_dir, '%s.pkl' % name)
             print('Loading %s...' % pkl_name)
