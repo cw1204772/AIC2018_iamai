@@ -2,12 +2,17 @@ import numpy as np
 
 class Track(object):
     def __init__(self, dets):
-        self.dets = dets
+        sort_idx = np.argsort(dets[:, 0])
+        self.dets = dets[sort_idx, :]
         self.id = dets[0, 1]
+        self.features = None
+        self.img_paths = None
     def sample_dets(self, sample_interval):
         return self.dets[::sample_interval]
     def import_features(self, features):
         self.features = features
+    def import_img_paths(self, img_paths):
+        self.img_paths = img_paths
     def birth_time(self):
         if self.dets.shape[0] == 0: return -1
         else: return np.min(self.dets[:,0])
@@ -25,20 +30,26 @@ class Track(object):
     def merge(self, t):
         t.dets = np.concatenate([self.dets, t.dets], axis=0)
         t.dets[:,1] = t.id
-        t.features = np.concatenate([self.features, t.features], axis=0)
+        if self.features is not None and t.features is not None:
+            t.features = np.concatenate([self.features, t.features], axis=0)
+        if self.img_paths is not None and t.img_paths is not None:
+            t.img_paths = self.img_paths + t.img_paths
         self.dets = np.zeros((0,0))
     def summarized_feature(self):
         return np.mean(self.features, axis=0)
     def assign_seq_id(self, seq_id,loc_id):
         seq_ids = seq_id * np.ones((self.dets.shape[0],1))
         loc_ids = loc_id * np.ones((self.dets.shape[0],1))
-        self.dets = np.concatenate([self.dets, seq_ids], axis=1)
-        self.dets = np.concatenate([self.dets, loc_ids], axis=1)
+        self.dets = np.concatenate([self.dets, seq_ids, loc_ids], axis=1)
     def dump(self):
         if self.dets.shape[1] == 9:
             return self.dets[:, [7]+list(range(7))]
         if self.dets.shape[1] == 7:
             return self.dets
+    def dump_img_paths(self):
+        if self.img_paths is None:
+            raise RuntimeError('track has not recorded any img paths!')
+        return self.img_paths
 
 def bbox_iou(bb1, bb2):
   x_left = max(bb1[0], bb2[0])

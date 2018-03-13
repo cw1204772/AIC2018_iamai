@@ -15,20 +15,18 @@ from collections import defaultdict
 from sklearn.manifold import TSNE
 import matplotlib.pyplot as plt
 import pickle
+import pathlib
+import shutil
 
-def dump_img(self,opt,class_):
-    output_dir = os.path.join(opt.cluster_method,'%05d'%(class_))
-    os.system('mkdir -p %s' % output_dir)
-    input_list = []
-    for i in range(len(self.history)):
-        input_list += [self.history[i]['loc']+'/%05dF%05d.jpg'%(self.history[i]['id'],frame_number) for frame_number in self.history[i]['frames']]
-    output_list = []
-    for img_path in input_list:
-        p = imread(os.path.join(opt.img_dir,img_path))
-        p_path = os.path.join(output_dir,img_path.replace('/','_'))
-        output_list.append((p,p_path))
-    for tup in output_list:
-        imsave(tup[1],tup[0])
+def dump_imgs(output_dir, track):
+    """Dump images from img_paths to output_dir/id"""
+    output_dir = os.path.join(output_dir, '%06d' % track.id)
+    pathlib.Path(output_dir).mkdir(parents=True, exist_ok=True)
+    for path in track.dump_img_paths():
+        p = path.split('/')
+        name = p[-2] + '_' + p[-1]
+        shutil.copyfile(path, os.path.join(output_dir, name))
+
 def dump_log(self,file,c):
     file.write('Cluster Class %05d :\n'%(c))
     for info in self.history:
@@ -39,12 +37,13 @@ def dump_log(self,file,c):
 def multi_camera_matching(opt,MCT):
     print('multi camera matching...')
     if opt.cluster_method == 'k-means':
-        from sklearn.cluster import KMeans
+        from sklearn.cluster import MiniBatchKMeans
         # decide n_class to be clustered 
         n_tracker = sum([len(loc_tracker) for loc_tracker in MCT])
-        # n_classes = n_tracker - 100 * (len(MCT)-1)
+        #n_classes = n_tracker - 100 * (len(MCT)-1)
         # haven't decide
-        n_classes = 50
+        n_classes = 1000
+        print('clustering %d tracks with %d clusters...' % (n_tracker, n_classes))
         
         all_features = []
         for i in range(len(MCT)):
@@ -53,7 +52,8 @@ def multi_camera_matching(opt,MCT):
         all_features = np.stack(all_features,axis=0)
 
         print('start kmeans')
-        Cluster = KMeans(n_clusters=n_classes,precompute_distances=True,n_jobs=-1,max_iter=500,n_init=15)
+        #Cluster = KMeans(n_clusters=n_classes,precompute_distances=True,n_jobs=-1,max_iter=500,n_init=15,verbose=1)
+        Cluster = MiniBatchKMeans(n_clusters=n_classes,max_iter=500,n_init=15,init_size=n_classes,verbose=1,max_no_improvement=100)
         class_output = Cluster.fit_predict(all_features)
         print('end kmeans')
         del all_features
@@ -83,34 +83,43 @@ if __name__ == '__main__':
     # IO
     parser = argparse.ArgumentParser()
     parser.add_argument('tracks_dir', help='tracks obj pickle directory')
+    parser.add_argument('output', help='output file')
+    parser.add_argument('--dump_dir', default='./tmp', help='folder to dump images')
     parser.add_argument('--cluster_method', default='k-means', type=str, help='cluster methods')
     #parser.add_argument('--log_txt', default='./reid_log.txt', type=str, help='Final tracker log')
 
     args = parser.parse_args()
 
     # Create sequence names
-    loc = [1, 2, 3, 4]
-    loc_n_seq = [1,1,1,1]#[4, 6, 2, 3]
+    loc = [1] #[1, 2, 3, 4]
+    loc_n_seq = [4, 6, 2, 3]
+    '''
     loc_list = []
     for i, l in enumerate(loc):
         for n in range(1,loc_n_seq[i]+1):
             loc_list.append('Loc%d_%d' % (l, n))
+    '''
+    
+    seqs = [[1],[1],[2],[1]]
     
     # Load and initialize tracks objs with seq names
     multi_cam_tracks = []
     seq_id = 1
     for i, l in enumerate(loc):
         single_cam_tracks = []
-        for n in range(1,loc_n_seq[i]+1):
+        #for n in range(1,loc_n_seq[i]+1):
+        for n in seqs[i]:
             name = 'Loc%d_%d' % (l, n)
             pkl_name = os.path.join(args.tracks_dir, '%s.pkl' % name)
+            print('Loading %s...' % pkl_name)
             with open(pkl_name, 'rb') as f:
                 tracks = pickle.load(f)
             for t in tracks:
-                t.assign_seq_id(seq_id,i+1)
+                t.assign_seq_id(seq_id, l)
             seq_id += 1
             single_cam_tracks += tracks
         multi_cam_tracks.append(single_cam_tracks)
+
     # Multi camera matching
     # len of multi_cam_tracks is equal to the number of Locations
     tracks = multi_camera_matching(args, multi_cam_tracks)
@@ -124,4 +133,9 @@ if __name__ == '__main__':
         dets.append(t.dump())
     dets = np.concatenate(dets, axis=0)
     dets = np.concatenate([dets[:,:7], -1*np.ones((dets.shape[0],1)), dets[:,[7]]], axis=1)
-    np.savetxt('track3.txt', dets, fmt='%f')
+    np.savetxt(args.output, dets, fmt='%f')
+
+    # Dump imgs
+    print('dumping images...')
+    for t in tracks:
+        dump_imgs(args.dump_dir, t)

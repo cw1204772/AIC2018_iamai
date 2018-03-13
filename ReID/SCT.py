@@ -49,14 +49,14 @@ def extract_images(tracks, video, sample_interval, save_dir):
 
     # Extract imgs
     video = cv2.VideoCapture(video)
-    framenumber = 0
+    framenumber = 1
     i = 0
     k = 0
     pbar = ProgressBar(max_value=n_imgs)
     while True:
-        ret, frame = video.read()
-        if not ret: break
         if i == len(imgs_info): break
+        ret, frame = video.read()
+        if not ret: raise RuntimeError('There are still images not extracted, but video ended!')
         if framenumber == imgs_info[i][0,0]:
             frame = frame[:,:,[2,1,0]]
             for j in range(imgs_info[i].shape[0]):
@@ -85,9 +85,12 @@ def extract_features(tracks, temp_dir, reid_model, n_layers, batch_size):
     # (Detections should already be sorted by id)
     img_ids = np.array([int(n.split('_')[0]) for n in img_names])
     feature_blocks = np.split(features, np.where(np.diff(img_ids))[0]+1, axis=0)
+    img_paths = np.split(img_paths, np.where(np.diff(img_ids))[0]+1, axis=0)
     assert len(feature_blocks)==len(tracks)
+    assert len(img_paths)==len(tracks)
     for i,t in enumerate(tracks):
          t.import_features(feature_blocks[i])
+         t.import_img_paths(img_paths[i].tolist())
     return tracks
 
 def single_camera_tracking(tracks, window, feature_th, bbox_th, verbose):
