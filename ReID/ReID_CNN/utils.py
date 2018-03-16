@@ -12,6 +12,7 @@ import time as time
 import models
 import numpy as np
 import torchvision.utils as vutils
+import pickle
 
 class VReID_Dataset(Dataset):
     def __init__(self, txt_file,resize=(224,224),crop=False,flip=False,jitter=0,pretrained_model=True,dataset='VeRi'):
@@ -150,13 +151,110 @@ class TripletImage_Dataset(Dataset):
     def __len__(self):
         return self.len
 
+class Unsupervised_TripletImage_Dataset(Dataset):
+    def __init__(self, pkl_name, resize=(224,224), crop=False, flip=False, jitter=False, 
+                 imagenet_normalize=True, val_split=0.01, 
+                 batch_size=128, image_per_class=4):
+
+        # Load sample list, image list
+        with open(pkl_name, 'rb') as f:
+            data = pickle.load(f)
+        self.samples = data['samples']
+        self.imgs = data['track_imgs']
+        self.batch_size = batch_size
+        self.image_per_class = image_per_class
+        self.len = sum([len(s) for s in self.samples])
+        self.train_index = list(range(self.len))
+
+        # Transform
+        self.jitter = jitter
+        trans_PIL = []
+        if crop:
+            trans_PIL.append(transforms.Resize((resize[0]+50, resize[1]+50)))
+            trans_PIL.append(transforms.RandomCrop(resize))
+        else:
+            trans_PIL.append(transforms.Resize(resize))
+        if flip: trans_PIL.append(transforms.RandomHorizontalFlip())
+        trans_Tensor = []
+        if not self.jitter: 
+            trans_Tensor.append(transforms.ToTensor())
+        if imagenet_normalize:
+            trans_Tensor.append(transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]))
+        self.transform_PIL = transforms.Compose(trans_PIL)
+        self.transform_Tensor = transforms.Compose(trans_Tensor)
+        
+    def __getitem__(self, idx):
+        sample_i = np.random.randint(len(self.samples))
+        track_i = 0
+        img_i = 0
+        rng = np.random.permutation(len(self.imgs[self.samples[sample_i][track_i]]))
+
+        output_img = torch.zeros(self.batch_size, 3, 224, 224)
+        sample_record = -1*np.ones((self.batch_size,))
+        track_record = -1*np.ones((self.batch_size,))
+        #img_record = -1*np.ones((self.batch_size,))
+        for i in range(self.batch_size):
+            img_name = None
+            while img_name is None:
+                if track_i < len(self.samples[sample_i]):
+                    if img_i < len(self.imgs[self.samples[sample_i][track_i]]) and img_i < self.image_per_class:
+                        img_name = self.imgs[self.samples[sample_i][track_i]][rng[img_i]]
+                        sample_record[i] = sample_i
+                        track_record[i] = track_i
+                        #img_record[i] = rng[img_i]
+                        img_i += 1
+                    elif track_i < self.image_per_class:
+                        track_i += 1
+                        img_i = 0
+                        if track_i < len(self.samples[sample_i]): 
+                            rng = np.random.permutation(len(self.imgs[self.samples[sample_i][track_i]]))
+                    else:
+                        track_i += 1
+                        img_i = 0
+                        if track_i < len(self.samples[sample_i]):
+                            rng = np.random.permutation(len(self.imgs[self.samples[sample_i][track_i]]))
+                else:
+                    sample_i = np.random.randint(len(self.samples))
+                    track_i = 0
+                    img_i = 0
+                    rng = np.random.permutation(len(self.imgs[self.samples[sample_i][track_i]]))
+
+            # Read image
+            img = Image.open(img_name)
+            if self.jitter:
+                img = self.transform_PIL(img)
+                img = Jitter_Transform_to_Tensor(img)
+                img = self.transform_Tensor(img)
+            else:
+                img = self.transform_Tensor(self.transform_PIL(img))
+            output_img[i, :, :, :] = img
+
+        #print('sample_record:', sample_record)
+        #print('track_record:', track_record)
+        #print('img_record:', img_record)
+        #print(list(zip(sample_record.tolist(), track_record.tolist(), img_record.tolist())))
+        sample_record = sample_record.reshape(-1, 1)
+        sample_record = sample_record == sample_record.T
+        track_record = track_record.reshape(-1, 1)
+        track_record = track_record == track_record.T
+        pos_mask = (sample_record & track_record) ^ np.eye(self.batch_size,dtype=bool)
+        neg_mask = sample_record & (~track_record)
+
+        output = {'img':output_img,
+                  'pos_mask':torch.from_numpy(pos_mask.astype(np.uint8)),
+                  'neg_mask':torch.from_numpy(neg_mask.astype(np.uint8))}
+        return output
+
+    def __len__(self):
+        return self.len
+
 def Get_train_DataLoader(dataset,batch_size=128,shuffle=True,num_workers=6):
     sampler = SubsetRandomSampler(dataset.train_index)
-    return DataLoader(dataset,batch_size = batch_size,sampler=sampler,num_workers=6)
+    return DataLoader(dataset,batch_size = batch_size,sampler=sampler,num_workers=num_workers)
 
 def Get_val_DataLoader(dataset,batch_size=128,shuffle=True,num_workers=6):
     sampler = SubsetRandomSampler(dataset.val_index)
-    return DataLoader(dataset,batch_size = batch_size,sampler=sampler,num_workers=6)
+    return DataLoader(dataset,batch_size = batch_size,sampler=sampler,num_workers=num_workers)
 
 def Remap_Label(labels):
     labels = labels - np.min(labels)
@@ -266,23 +364,23 @@ if __name__ == '__main__':
     #labels = Remap_Label(labels)
     #print(labels)
 
-    dataset = TripletImage_Dataset(sys.argv[1], crop=True, flip=True, jitter=True, imagenet_normalize=True)
-    train_loader = Get_train_DataLoader(dataset, batch_size=32, num_workers=1)
-    val_loader = Get_val_DataLoader(dataset, batch_size=32)
+    torch.set_printoptions(threshold=5000)
+    dataset = Unsupervised_TripletImage_Dataset(sys.argv[1], crop=True, flip=True, jitter=True, imagenet_normalize=True, batch_size=32, image_per_class=2)
+    train_loader = Get_train_DataLoader(dataset, batch_size=1, num_workers=1)
+    #val_loader = Get_val_DataLoader(dataset, batch_size=32)
     print('len', len(dataset))
     print('train n_batch', len(train_loader))
-    print('val n_batch', len(val_loader))
+    #print('val n_batch', len(val_loader))
     for data in train_loader:
        print(data.keys())
-       print(data['img'][0].size())
-       print(data['class'][0].size())
-       print(data['colors'][0].size())
-       print(data['colors'][0])
+       print(data['img'].size())
+       print(data['pos_mask'])
+       print(data['neg_mask'])
        exit(-1)
-    for data in val_loader:
-       print(data.keys())
-       print(data['img'])
-       print(data['class'])
+    #for data in val_loader:
+    #   print(data.keys())
+    #   print(data['img'])
+    #   print(data['class'])
     # '''
 
 
