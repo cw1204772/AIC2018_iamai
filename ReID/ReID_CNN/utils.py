@@ -90,6 +90,7 @@ class TripletImage_Dataset(Dataset):
         self.imgs = txt[:, 0]
         self.classes, self.n_id = Remap_Label(txt[:, 1].astype(int))
         self.colors, self.n_colors = Remap_Label(txt[:,2].astype(int))
+        self.n_colors = 12
 
         if not Check_Min_Sample_Per_Class(self.classes, image_per_class_in_batch): 
             return ValueError('There is not enough samples per class! (Min {} samples required)'\
@@ -130,7 +131,7 @@ class TripletImage_Dataset(Dataset):
         select = np.random.permutation(select)[:self.image_per_class_in_batch]
         # for color
         color = int(self.colors[select][0])
-        output = {'img':[], 'class':[],'colors':[]}
+        output = {'img':[], 'class':[],'color':[]}
         for i in select.tolist():
             img = Image.open(self.imgs[i])
             if self.jitter:
@@ -141,14 +142,120 @@ class TripletImage_Dataset(Dataset):
                 img = self.transform_Tensor(self.transform_PIL(img))
             output['img'].append(img.unsqueeze(0))
             output['class'].append(id)
-            output['colors'].append(color)
+            output['color'].append(color)
         output['img'] = torch.cat(output['img'], dim=0)
         output['class'] = torch.LongTensor(output['class'])
-        output['colors'] = torch.LongTensor(output['colors'])
+        output['color'] = torch.LongTensor(output['color'])
         return output
 
     def __len__(self):
         return self.len
+
+class sv_comp_Dataset(Dataset):
+    def __init__(self, db_txt, resize=(224,224), crop=False, flip=False, jitter=False, 
+                 imagenet_normalize=True, val_split=0.01 ):
+        # Load image list, class list
+        txt = np.loadtxt(db_txt, dtype=str)
+        self.imgs = txt[:, 0]
+        self.makes, self.n_makes = Remap_Label(txt[:, 2].astype(int))
+        self.models, self.n_models = Remap_Label(txt[:, 3].astype(int))
+        # don't use remap on colors
+        self.colors  = txt[:,4].astype(int)
+        self.n_colors = 12
+        self.len = len(self.makes)
+        # Validation split (split according to id)
+        permute_idx = np.random.permutation(self.len)
+        self.val_index = permute_idx[:int(val_split*self.len)]
+        self.train_index = permute_idx[int(val_split*self.len):]
+        self.n_train = int(self.len * (1-val_split))
+        self.n_val = int(self.len * val_split)
+        #transform
+        self.jitter = jitter
+        trans_PIL = []
+        if crop:
+            trans_PIL.append(transforms.Resize((resize[0]+50, resize[1]+50)))
+            trans_PIL.append(transforms.RandomCrop(resize))
+        else:
+            trans_PIL.append(transforms.Resize(resize))
+        if flip: trans_PIL.append(transforms.RandomHorizontalFlip())
+        trans_Tensor = []
+        if not self.jitter: 
+            trans_Tensor.append(transforms.ToTensor())
+        if imagenet_normalize:
+            trans_Tensor.append(transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]))
+        self.transform_PIL = transforms.Compose(trans_PIL)
+        self.transform_Tensor = transforms.Compose(trans_Tensor)
+    def __getitem__(self, idx):
+        img_name = self.imgs[idx]
+        make = self.makes[idx]
+        model = self.models[idx]
+        color = self.colors[idx]
+        img = Image.open(img_name)
+        if self.jitter:
+            img = self.transform_PIL(img)
+            img = Jitter_Transform_to_Tensor(img)
+            img = self.transform_Tensor(img)
+        else:
+            img = self.transform_Tensor(self.transform_PIL(img))
+        return {'img':img,'make':torch.LongTensor([int(make)]),'model':torch.LongTensor([int(model)]),'color':torch.LongTensor([int(color)])}
+    def __len__(self):
+        return self.len
+
+class comp_Dataset(Dataset):
+    def __init__(self, db_txt, resize=(224,224), crop=False, flip=False, jitter=False, 
+                 imagenet_normalize=True, val_split=0.01 ):
+        # Load image list, class list
+        flip = False
+        txt = np.loadtxt(db_txt, dtype=str)
+        self.imgs = txt[:, 0]
+        self.makes, self.n_makes = Remap_Label(txt[:, 1].astype(int))
+        self.models, self.n_models = Remap_Label(txt[:, 2].astype(int))
+        self.angle, self.n_angle = Remap_Label(txt[:, 3].astype(int))
+        self.crop_4  = txt[:,4:].astype(int)
+        self.len = len(self.makes)
+        # Validation split (split according to id)
+        permute_idx = np.random.permutation(self.len)
+        self.val_index = permute_idx[:int(val_split*self.len)]
+        self.train_index = permute_idx[int(val_split*self.len):]
+        self.n_train = int(self.len * (1-val_split))
+        self.n_val = int(self.len * val_split)
+        #transform
+        self.jitter = jitter
+        trans_PIL = []
+        if crop:
+            trans_PIL.append(transforms.Resize((resize[0]+50, resize[1]+50)))
+            trans_PIL.append(transforms.RandomCrop(resize))
+        else:
+            trans_PIL.append(transforms.Resize(resize))
+        if flip: trans_PIL.append(transforms.RandomHorizontalFlip())
+        trans_Tensor = []
+        if not self.jitter: 
+            trans_Tensor.append(transforms.ToTensor())
+        if imagenet_normalize:
+            trans_Tensor.append(transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]))
+        self.transform_PIL = transforms.Compose(trans_PIL)
+        self.transform_Tensor = transforms.Compose(trans_Tensor)
+    def __getitem__(self, idx):
+        img_name = self.imgs[idx]
+        make = self.makes[idx]
+        model = self.models[idx]
+        angle = self.angle[idx]
+        x1 = self.crop_4[idx][0]
+        y1 = self.crop_4[idx][0]
+        w = self.crop_4[idx][2]-self.crop_4[idx][0]
+        h = self.crop_4[idx][3]-self.crop_4[idx][1]
+        img = Image.open(img_name)
+        img = img.crop((x1,y1,w,h))
+        if self.jitter:
+            img = self.transform_PIL(img)
+            img = Jitter_Transform_to_Tensor(img)
+            img = self.transform_Tensor(img)
+        else:
+            img = self.transform_Tensor(self.transform_PIL(img))
+        return {'img':img,'make':torch.LongTensor([int(make)]),'model':torch.LongTensor([int(model)]),'angle':torch.LongTensor([int(angle)])}
+    def __len__(self):
+        return self.len
+
 
 def Get_train_DataLoader(dataset,batch_size=128,shuffle=True,num_workers=6):
     sampler = SubsetRandomSampler(dataset.train_index)
@@ -265,19 +372,22 @@ if __name__ == '__main__':
     #print(labels)
     #labels = Remap_Label(labels)
     #print(labels)
-
-    dataset = TripletImage_Dataset(sys.argv[1], crop=True, flip=True, jitter=True, imagenet_normalize=True)
+    dataset = comp_Dataset(sys.argv[1],crop=True,flip=True,jitter=True)
     train_loader = Get_train_DataLoader(dataset, batch_size=32, num_workers=1)
     val_loader = Get_val_DataLoader(dataset, batch_size=32)
+
+    # dataset = TripletImage_Dataset(sys.argv[1], crop=True, flip=True, jitter=True, imagenet_normalize=True)
+    # train_loader = Get_train_DataLoader(dataset, batch_size=32, num_workers=1)
+    # val_loader = Get_val_DataLoader(dataset, batch_size=32)
     print('len', len(dataset))
     print('train n_batch', len(train_loader))
     print('val n_batch', len(val_loader))
     for data in train_loader:
        print(data.keys())
-       print(data['img'][0].size())
-       print(data['class'][0].size())
-       print(data['colors'][0].size())
-       print(data['colors'][0])
+       print(data['img'].size())
+       print(data['make'].size())
+       print(data['model'].size())
+       print(data['angle'].size())
        exit(-1)
     for data in val_loader:
        print(data.keys())
