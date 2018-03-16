@@ -89,6 +89,8 @@ class TripletImage_Dataset(Dataset):
         txt = np.loadtxt(db_txt, dtype=str)
         self.imgs = txt[:, 0]
         self.classes, self.n_id = Remap_Label(txt[:, 1].astype(int))
+        self.colors, self.n_colors = Remap_Label(txt[:,2].astype(int))
+
         if not Check_Min_Sample_Per_Class(self.classes, image_per_class_in_batch): 
             return ValueError('There is not enough samples per class! (Min {} samples required)'\
                               .format(image_per_class_in_batch))
@@ -121,11 +123,14 @@ class TripletImage_Dataset(Dataset):
         self.transform_Tensor = transforms.Compose(trans_Tensor)
         
     def __getitem__(self, idx):
+        # for id
         id = torch.arange(self.n_id).long()[idx]
         final_idx = np.zeros((self.image_per_class_in_batch,))
         select = np.nonzero(self.classes == id)[0]
         select = np.random.permutation(select)[:self.image_per_class_in_batch]
-        output = {'img':[], 'class':[]}
+        # for color
+        color = int(self.colors[select][0])
+        output = {'img':[], 'class':[],'colors':[]}
         for i in select.tolist():
             img = Image.open(self.imgs[i])
             if self.jitter:
@@ -136,8 +141,10 @@ class TripletImage_Dataset(Dataset):
                 img = self.transform_Tensor(self.transform_PIL(img))
             output['img'].append(img.unsqueeze(0))
             output['class'].append(id)
+            output['colors'].append(color)
         output['img'] = torch.cat(output['img'], dim=0)
         output['class'] = torch.LongTensor(output['class'])
+        output['colors'] = torch.LongTensor(output['colors'])
         return output
 
     def __len__(self):
@@ -158,6 +165,7 @@ def Remap_Label(labels):
     for i, l in enumerate(unique_label.tolist()):
         label_map[l] = i
     return label_map[labels], len(unique_label)
+# def Remap_Color(colors):
 
 def Check_Min_Sample_Per_Class(labels, min):
     unique_labels = np.unique(labels)
@@ -211,38 +219,10 @@ def Jitter_Transform_to_Tensor(img_):
     img[2,:,:] *=b_factor
     return img    
     
-# def generating_train_test_info():
-    # label_list = []
-    # file = open('train_info.txt','r')
-    # file_content = file.readlines()
-    # for row in file_content:
-        # img,label = row.strip().split(' ')
-        # label_list.append(label)
-    # n_id = len(set(label_list))
-    # test_id = list(np.random.permutation(n_id)[:int(0.3*n_id)])
-    
-    # train_label_dict = {}
-    # test_label_dict = {}
-    # tr_file = open('real_train_info.txt','w')
-    # te_file = open('real_test_info.txt','w')
-    # train_count = 0
-    # test_count = 0
-    # for row in file_content:
-        # img,label = row.strip().split(' ')
-        # if int(label) not in test_id:
-            # if label not in train_label_dict:
-                # train_label_dict[label]=train_count
-                # train_count += 1
-                # tr_file.write(img+' '+str(train_label_dict[label])+'\n')
-            # else:
-                # tr_file.write(img+' '+str(train_label_dict[label])+'\n')
-        # else:
-            # if label not in test_label_dict:
-                # test_label_dict[label]=test_count
-                # test_count +=1
-                # te_file.write(img+' '+str(test_label_dict[label])+'\n')
-            # else:
-                # te_file.write(img+' '+str(test_label_dict[label])+'\n')
+
+
+
+
 
 if __name__ == '__main__':
     re = transforms.Resize((224,224))
@@ -296,8 +276,8 @@ if __name__ == '__main__':
        print(data.keys())
        print(data['img'][0].size())
        print(data['class'][0].size())
-       vutils.save_image(data['img'][0][0],'testimg.jpg')
-
+       print(data['colors'][0].size())
+       print(data['colors'][0])
        exit(-1)
     for data in val_loader:
        print(data.keys())
