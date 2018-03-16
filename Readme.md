@@ -34,7 +34,7 @@ cd ReID/ReID_CNN
 
 1. Create train, query, gallery info .txt files
    ```
-   bash setup.sh <dir_to_VeRi>
+   bash setup.sh <dir_to_VeRi> <dir_to_comp_dataset> <dir_to_sv_dataset>
    ```
 
 2. Training
