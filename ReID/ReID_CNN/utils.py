@@ -6,10 +6,12 @@ from torch.autograd import Variable
 from torch.utils.data import Dataset,DataLoader
 from torch.utils.data.sampler import SubsetRandomSampler
 from torchvision import transforms
-from PIL import Image
+from torchvision.transforms import Compose,Resize,ToTensor
+from PIL import Image,ImageEnhance
 import time as time
 import models
 import numpy as np
+import torchvision.utils as vutils
 
 class VReID_Dataset(Dataset):
     def __init__(self, txt_file,resize=(224,224),crop=False,flip=False,jitter=0,pretrained_model=True,dataset='VeRi'):
@@ -79,7 +81,7 @@ class VReID_Dataset(Dataset):
         return len(self.img_list)
             
 class TripletImage_Dataset(Dataset):
-    def __init__(self, db_txt, resize=(224,224), crop=False, flip=False, jitter=0, 
+    def __init__(self, db_txt, resize=(224,224), crop=False, flip=False, jitter=False, 
                  imagenet_normalize=True, val_split=0.01, 
                  class_in_batch=32, image_per_class_in_batch=4):
 
@@ -102,18 +104,21 @@ class TripletImage_Dataset(Dataset):
         self.n_val = int(self.len * val_split)
 
         # Transform
-        trans = []
+        self.jitter = jitter
+        trans_PIL = []
         if crop:
-            trans.append(transforms.Resize((resize[0]+50, resize[1]+50)))
-            trans.append(transforms.RandomCrop(resize))
+            trans_PIL.append(transforms.Resize((resize[0]+50, resize[1]+50)))
+            trans_PIL.append(transforms.RandomCrop(resize))
         else:
-            trans.append(transforms.Resize(resize))
-        if flip: trans.append(transforms.RandomHorizontalFlip())
-        if jitter: trans.append(transforms.ColorJitter(brightness=jitter))
-        trans.append(transforms.ToTensor())
+            trans_PIL.append(transforms.Resize(resize))
+        if flip: trans_PIL.append(transforms.RandomHorizontalFlip())
+        trans_Tensor = []
+        if not self.jitter: 
+            trans_Tensor.append(transforms.ToTensor())
         if imagenet_normalize:
-            trans.append(transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]))
-        self.transform = transforms.Compose(trans)
+            trans_Tensor.append(transforms.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225]))
+        self.transform_PIL = transforms.Compose(trans_PIL)
+        self.transform_Tensor = transforms.Compose(trans_Tensor)
         
     def __getitem__(self, idx):
         id = torch.arange(self.n_id).long()[idx]
@@ -123,7 +128,13 @@ class TripletImage_Dataset(Dataset):
         output = {'img':[], 'class':[]}
         for i in select.tolist():
             img = Image.open(self.imgs[i])
-            output['img'].append(self.transform(img).unsqueeze(0))
+            if self.jitter:
+                img = self.transform_PIL(img)
+                img = Jitter_Transform_to_Tensor(img)
+                img = self.transform_Tensor(img)
+            else:
+                img = self.transform_Tensor(self.transform_PIL(img))
+            output['img'].append(img.unsqueeze(0))
             output['class'].append(id)
         output['img'] = torch.cat(output['img'], dim=0)
         output['class'] = torch.LongTensor(output['class'])
@@ -155,6 +166,51 @@ def Check_Min_Sample_Per_Class(labels, min):
             return False
     return True
 
+
+def Jitter_Transform_to_Tensor(img_):
+    coin = np.random.uniform(0,1)
+    coin = 0.9
+    if coin> 0.4 and coin < 0.7: #normal
+        i_factor = 1
+        c_factor = 1
+        r_factor = 1
+        b_factor = 1
+    elif coin <= 0.2: #high shadow blue
+        i_factor = 0.6
+        c_factor = 0.8
+        r_factor = 0.9
+        b_factor = 1.3
+    elif coin > 0.2 and coin <= 0.4: #little shadow blue
+        i_factor = 0.7
+        c_factor = 0.7
+        r_factor = 0.9
+        b_factor = 1.2
+    elif coin >= 0.7 and coin<0.8: #little bright
+        i_factor = 1.2
+        c_factor = 1.2
+        r_factor = 1
+        b_factor = 1
+    elif coin >= 0.8 and coin<0.9: # little yellow
+        i_factor = 0.7
+        c_factor = 0.7
+        r_factor = 1.2
+        b_factor = 0.9
+    elif coin >= 0.9 and coin <1: # higher shadow yellow
+        i_factor = 0.6
+        c_factor = 0.6
+        r_factor = 1.4
+        b_factor = 0.8
+    enhancer_br = ImageEnhance.Brightness(img_)
+    img = enhancer_br.enhance(i_factor)
+    enhancer_con = ImageEnhance.Contrast(img)
+    img = enhancer_con.enhance(c_factor)
+
+    totensor = transforms.ToTensor()
+    img = totensor(img)
+    img[0,:,:] *=r_factor
+    img[2,:,:] *=b_factor
+    return img    
+    
 # def generating_train_test_info():
     # label_list = []
     # file = open('train_info.txt','r')
@@ -189,22 +245,48 @@ def Check_Min_Sample_Per_Class(labels, min):
                 # te_file.write(img+' '+str(test_label_dict[label])+'\n')
 
 if __name__ == '__main__':
-    '''
-    pretrained = True
+    re = transforms.Resize((224,224))
+    '''This part
+    totensor = transforms.ToTensor()
+    brightness_factor = float(sys.argv[2])
+    contrast_factor = float(sys.argv[3])
+    hue_factor = float(sys.argv[4])
 
-    D = VReID_Dataset(sys.argv[1],crop=True,flip=True,pretrained_model=pretrained)
-    loader = Get_DataLoader(D)
+    img = Image.open(sys.argv[1])
+    img = re(img)
 
-    print('len:',len(D))
-    print('n_id:',D.n_id)
-    print('n_batch:',len(D)//128+1)
+    enhancer_br = ImageEnhance.Brightness(img)
+    img = enhancer_br.enhance(brightness_factor)
+    enhancer_con = ImageEnhance.Contrast(img)
+    img = enhancer_con.enhance(contrast_factor)
+    img = totensor(img)
+    vutils.save_image(img,'testimg.jpg')
+    exit(-1)
     '''
+
+    '''And This part
+    img = Image.open(sys.argv[1])
+    re = transforms.Resize((224,224))
+    img = re(img)
+    img = Jitter_Transform_to_Tensor(img)
+    vutils.save_image(img,'testimg.jpg')
+    exit(-1)
+    # '''
+    # '''
+    # pretrained = True
+
+    # D = VReID_Dataset(sys.argv[1],crop=True,flip=True,pretrained_model=pretrained)
+    # loader = Get_DataLoader(D)
+
+    # print('len:',len(D))
+    # print('n_id:',D.n_id)
+    # print('n_batch:',len(D)//128+1)
     #labels = (np.arange(10)+1)*10
     #print(labels)
     #labels = Remap_Label(labels)
     #print(labels)
 
-    dataset = TripletImage_Dataset(sys.argv[1], crop=True, flip=True, jitter=5, imagenet_normalize=True)
+    dataset = TripletImage_Dataset(sys.argv[1], crop=True, flip=True, jitter=True, imagenet_normalize=True)
     train_loader = Get_train_DataLoader(dataset, batch_size=32, num_workers=1)
     val_loader = Get_val_DataLoader(dataset, batch_size=32)
     print('len', len(dataset))
@@ -214,10 +296,13 @@ if __name__ == '__main__':
        print(data.keys())
        print(data['img'][0].size())
        print(data['class'][0].size())
+       vutils.save_image(data['img'][0][0],'testimg.jpg')
+
        exit(-1)
     for data in val_loader:
        print(data.keys())
        print(data['img'])
        print(data['class'])
+    # '''
 
 
