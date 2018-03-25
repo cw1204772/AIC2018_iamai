@@ -7,8 +7,6 @@ class Track(object):
         self.id = dets[0, 1]
         self.features = None
         self.img_paths = None
-    def sample_dets(self, sample_interval):
-        return self.dets[::sample_interval]
     def import_features(self, features):
         self.features = features
     def import_img_paths(self, img_paths):
