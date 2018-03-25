@@ -43,6 +43,7 @@ if __name__ == '__main__':
         colorID_list.append(s.attributes['colorID'].value)
         typeID_list.append(s.attributes['typeID'].value)
 
+    txt_file.write('img_path id color type\n')
     for i in range(len(img_list)):
         img_path = img_list[i]
         V_ID = str(V_ID_dict[V_ID_list[i]])
@@ -56,6 +57,7 @@ if __name__ == '__main__':
     img_list = os.listdir(args.query_dir)
     img_list.sort()
     file = open(args.query_txt,'w')
+    file.write('img_path\n')
     for i in img_list:
         file.write(os.path.join(args.query_dir,i)+'\n')
     file.close()
@@ -64,6 +66,7 @@ if __name__ == '__main__':
     img_list = os.listdir(args.gallery_dir)
     img_list.sort()
     file = open(args.gallery_txt,'w')
+    file.write('img_path\n')
     for i in img_list:
         file.write(os.path.join(args.gallery_dir,i)+'\n')
     file.close()

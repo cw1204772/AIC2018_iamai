@@ -61,23 +61,25 @@ if __name__ == '__main__':
     file_test = open(os.path.join(args.sv_dataset_dir,'test_surveillance.txt'),'r')
     # train
     file = open(os.path.join(args.info_dir,'Comp_sv_train.txt'),'w')
+    file.write('img_path make model color\n')
     for row in file_train:
         id,file_name = row.strip().split('/')
         path_name = os.path.abspath(os.path.join(args.sv_dataset_dir,'image',row.strip()))
         make = str(make_model_label[int(id)-1][0])
         model = str(make_model_label[int(id)-1][1])
         color = str(color_dict[row.strip()])
-        file.write('%s %s %s %s %s\n'%(path_name,id,make,model,color))
+        file.write('%s %s %s %s\n'%(path_name,make,model,color))
     file.close()
     #test
     file = open(os.path.join(args.info_dir,'Comp_sv_test.txt'),'w')
+    file.write('img_path make model color\n')
     for row in file_test:
         id,file_name = row.strip().split('/')
         path_name = os.path.abspath(os.path.join(args.sv_dataset_dir,'image',row.strip()))
         make = str(make_model_label[int(id)-1][0])
         model = str(make_model_label[int(id)-1][1])
         color = str(color_dict[row.strip()])
-        file.write('%s %s %s %s %s\n'%(path_name,id,make,model,color))
+        file.write('%s %s %s %s\n'%(path_name,make,model,color))
     file.close()
     file_train.close()
     file_test.close()
@@ -90,7 +92,7 @@ if __name__ == '__main__':
     keys = keys[idx]
     values = values[idx]
     for i in range(keys.shape[0]):
-        file.write(str(keys[i])+' '+str(values[i])+'\n')
+        file.write(str(values[i])+' '+str(keys[i])+'\n')
     file.close()
     
     file = open(os.path.join(args.info_dir,'Comp_sv_model_dict.txt'),'w')
@@ -100,12 +102,13 @@ if __name__ == '__main__':
     keys = keys[idx]
     values = values[idx]
     for i in range(keys.shape[0]):
-        file.write(str(keys[i])+' '+str(values[i])+'\n')
+        file.write(str(values[i])+' '+str(keys[i])+'\n')
     file.close()
     #################################################################################################
     file_train = open(os.path.join(args.comp_dataset_dir,'train_test_split','classification','train.txt'),'r')
     file_test = open(os.path.join(args.comp_dataset_dir,'train_test_split','classification','test.txt'),'r')
     file = open(os.path.join(args.info_dir,'Comp_train.txt'),'w')
+    file.write('img_path make model angle bbox_x1 bbox_y1 bbox_x2 bbox_y2\n')
     for row in file_train:
         row = row.strip()
         file_path = os.path.abspath(os.path.join(args.comp_dataset_dir,'image',row))
@@ -117,6 +120,7 @@ if __name__ == '__main__':
         model = row.split('/')[1]
         file.write('%s %s %s %s %s\n'%(file_path,make,model,angle,coordinate))
     file= open(os.path.join(args.info_dir,'Comp_test.txt'),'w')
+    file.write('img_path make model angle bbox_x1 bbox_y1 bbox_x2 bbox_y2\n')
     for row in file_test:
         row = row.strip()
         file_path = os.path.abspath(os.path.join(args.comp_dataset_dir,'image',row))

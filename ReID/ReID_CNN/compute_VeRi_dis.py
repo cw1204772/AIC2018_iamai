@@ -52,8 +52,10 @@ if __name__ == '__main__':
     
     with open(args.query_txt,'r') as f:
         query_txt = [q.strip() for q in f.readlines()]
+        query_txt = query_txt[1:]
     with open(args.gallery_txt,'r') as f:
         gallery_txt = [q.strip() for q in f.readlines()]
+        gallery_txt = gallery_txt[1:]
     print('inferencing q_features')
     q_features = model.inference(query_txt)
     print('inferencing g_features')
