@@ -5,6 +5,28 @@ import torchvision.models as models
 from torchvision import transforms
 import torch.nn.functional as F
 
+class FeatureResNet(nn.Module):
+    def __init__(self,n_layers=50,pretrained=True):
+        super(FeatureResNet,self).__init__()
+        if n_layers == 50:
+            old_model= models.resnet50(pretrained=pretrained)
+        elif n_layers == 34:
+            old_model= models.resnet34(pretrained=pretrained)
+        elif n_layers == 18:
+            old_model= models.resnet18(pretrained=pretrained)
+        else:
+            raise NotImplementedError('resnet%s is not found'%(n_layers))
+
+        for name,modules in old_model._modules.items():
+            if name.find('fc') == -1:
+                self.add_module(name,modules)
+        self.output_dim = old_model.fc.in_features
+        self.pretrained = pretrained
+    def forward(self,x):
+        for name,module in self._modules.items():
+            x = nn.parallel.data_parallel(module, x)
+        return x.view(x.size(0), -1)
+
 class ResNet(nn.Module):
     def __init__(self,n_id,n_layers=50,pretrained=True):
         super(ResNet,self).__init__()
@@ -28,6 +50,24 @@ class ResNet(nn.Module):
                 x = module(x)
         out = self.fc(x.view(x.size(0),-1))
         return out, x.view(x.size(0), -1)
+
+class NLayersFC(nn.Module):
+    def __init__(self, in_dim, out_dim, hidden_dim=1, n_layers=0):
+        super(NLayersFC, self).__init__()
+        if n_layers == 0:
+            model = [nn.Linear(in_dim, out_dim)]
+        else:
+            model = []
+            model += [nn.Linear(in_dim, hidden_dim),
+                      nn.ReLU(True)]
+            for i in range(n_layers-1):
+                model += [nn.Linear(hidden_dim, hidden_dim),
+                          nn.ReLU(True)]
+            model += [nn.Linear(hidden_dim, out_dim)]
+        self.model = nn.Sequential(*model)
+
+    def forward(self, x):
+        return self.model(x)
 
 class ICT_ResNet(nn.Module):
     def __init__(self,n_id,n_color,n_type,n_layers=50,pretrained=True):
