@@ -23,10 +23,6 @@ if __name__ == '__main__':
             img_path = os.path.join(dataset_dir, 'images', i['path'])
             x, y, w, h = i['2DBB']
             outputs.append([img_path, ID, x, y, w, h])
-            img = Image.open(img_path)
-            img = img.crop((x,y,x+w,y+h))
-            img.save('temp.jpg')
-            sys.exit()
     with open('BoxCars_train.txt', 'w') as f:
          csv.writer(f, delimiter=' ').writerows(outputs)
 
