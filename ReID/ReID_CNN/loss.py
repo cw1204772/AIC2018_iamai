@@ -31,13 +31,25 @@ class TripletLoss(nn.Module):
             raise NotImplementedError(
                 'The margin {} is not recognized in TripletLoss()'.format(margin))
 
-    def forward(self, feat, id):
+    def forward(self, feat, id=None, pos_mask=None, neg_mask=None, mode='id'):
         dist = self.cdist(feat, feat)
-        identity_mask = Variable(torch.eye(feat.size(0)).byte())
-        identity_mask = identity_mask.cuda() if id.is_cuda else identity_mask
-        same_id_mask = torch.eq(id.unsqueeze(1), id.unsqueeze(0))
-        negative_mask = same_id_mask ^ 1
-        positive_mask = same_id_mask ^ identity_mask
+        if mode == 'id':
+            if id is None:
+                 raise RuntimeError('foward is in id mode, please input id!')
+            else:
+                 identity_mask = Variable(torch.eye(feat.size(0)).byte())
+                 identity_mask = identity_mask.cuda() if id.is_cuda else identity_mask
+                 same_id_mask = torch.eq(id.unsqueeze(1), id.unsqueeze(0))
+                 negative_mask = same_id_mask ^ 1
+                 positive_mask = same_id_mask ^ identity_mask
+        elif mode == 'mask':
+            if pos_mask is None or neg_mask is None:
+                 raise RuntimeError('foward is in mask mode, please input pos_mask & neg_mask!')
+            else:
+                 positive_mask = pos_mask
+                 same_id_mask = neg_mask ^ 1
+        else:
+            raise ValueError('unrecognized mode')
         if self.batch_hard:
             max_positive = (dist * positive_mask.float()).max(1)[0]
             min_negative = (dist + 1e5*same_id_mask.float()).min(1)[0]

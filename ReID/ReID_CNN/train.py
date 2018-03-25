@@ -3,7 +3,7 @@ import torch.nn as nn
 from torch.autograd import Variable
 import torch.optim as optim
 import torch.backends.cudnn as cudnn
-from utils import VReID_Dataset, TripletImage_Dataset, Get_train_DataLoader, Get_val_DataLoader
+from utils import VReID_Dataset, TripletImage_Dataset, Get_train_DataLoader, Get_val_DataLoader, Unsupervised_TripletImage_Dataset
 from loss import TripletLoss
 from logger import Logger
 import models
@@ -203,6 +203,49 @@ def train_triplet(args,Dataset,train_Dataloader,val_Dataloader,net):
         file.write('Epoch %d: val_acc = %.3f\n'%(e,np.mean(correct)))
         file.close()
 
+def train_unsupervised_triplet(args,Dataset,train_Dataloader,net):
+    margin = args.margin if args.margin=='soft' else float(args.margin)
+
+    optimizer = optim.Adam(net.parameters(), lr=args.lr)
+    criterion_triplet = TripletLoss(margin=margin, batch_hard=args.batch_hard)
+    logger = Logger(args.save_model_dir, prefix='train_')
+    
+    for e in range(args.n_epochs):
+        pbar = tqdm(total=len(train_Dataloader),ncols=100,leave=True)
+        pbar.set_description('Epoch %d'%(e))
+
+        epoch_loss = 0
+        iter_count = 0
+        for i_batch, samples in enumerate(train_Dataloader):
+            iter_count +=1
+            imgs = samples['img'].squeeze(0)
+            pos_mask = samples['pos_mask'].squeeze(0)
+            neg_mask = samples['neg_mask'].squeeze(0)
+            b_img = Variable(imgs).cuda()
+            pos_mask = Variable(pos_mask).cuda()
+            neg_mask = Variable(neg_mask).cuda()
+            net.zero_grad()
+            #forward
+            pred_feat = net(b_img)
+            b_loss = criterion_triplet(pred_feat, pos_mask=pos_mask, neg_mask=neg_mask, mode='mask')
+            loss = b_loss.mean()
+            epoch_loss += loss.data[0]
+            # backward
+            loss.backward()
+            optimizer.step()
+
+            logger.append_epoch(e + float(i_batch)/len(train_Dataloader))
+            logger.append_loss(b_loss.data.cpu().numpy())
+            logger.append_feat(pred_feat.data.cpu().numpy())
+            logger.write_log()
+            pbar.update(1)
+            pbar.set_postfix({'loss':'%.2f'%(loss.data[0])})
+        pbar.close()
+        print('Training total loss = %.3f'%(epoch_loss/iter_count))
+        if e % args.save_every_n_epoch == 0:
+            torch.save(net.state_dict(),os.path.join(args.save_model_dir,'model_%d.ckpt'%(e)))
+        logger.plot()
+
 if __name__ == '__main__':
     ## Parse arg
     parser = argparse.ArgumentParser(description='Train Re-ID net',formatter_class=argparse.ArgumentDefaultsHelpFormatter)
@@ -219,6 +262,7 @@ if __name__ == '__main__':
     parser.add_argument('--n_layer',type=int,default=18,help='number of Resnet layers')
     parser.add_argument('--dataset',default='VeRi',help='which dataset:VeRi or VeRi_ict')
     parser.add_argument('--triplet',action='store_true',help='use triplet training')
+    parser.add_argument('--unsupervised',action='store_true',help='use unsupervised triplet training')
     parser.add_argument('--with_class',action='store_true',help='whether to train with class label during triplet training')
     parser.add_argument('--margin',type=str,default='0',help='margin of triplet loss ("soft" or float)')
     parser.add_argument('--class_in_batch',type=int,default=32,help='# of class in a batch for triplet training')
@@ -230,12 +274,17 @@ if __name__ == '__main__':
 
     ## Get Dataset & DataLoader
     if args.triplet:
-        Dataset = TripletImage_Dataset(args.info, crop=args.crop, flip=args.flip, jitter=args.jitter, 
-                                       imagenet_normalize=args.pretrain, 
-                                       class_in_batch=args.class_in_batch,
-                                       image_per_class_in_batch=args.image_per_class_in_batch)
-        train_Dataloader = Get_train_DataLoader(Dataset,batch_size=args.class_in_batch)
-        val_Dataloader = Get_val_DataLoader(Dataset,batch_size=args.class_in_batch)
+        if args.unsupervised:
+            Dataset = Unsupervised_TripletImage_Dataset(args.info, crop=args.crop, flip=args.flip, jitter=args.jitter, 
+                                           imagenet_normalize=args.pretrain)
+            train_Dataloader = Get_train_DataLoader(Dataset,batch_size=1)
+        else:
+            Dataset = TripletImage_Dataset(args.info, crop=args.crop, flip=args.flip, jitter=args.jitter, 
+                                           imagenet_normalize=args.pretrain, 
+                                           class_in_batch=args.class_in_batch,
+                                           image_per_class_in_batch=args.image_per_class_in_batch)
+            train_Dataloader = Get_train_DataLoader(Dataset,batch_size=args.class_in_batch)
+            val_Dataloader = Get_val_DataLoader(Dataset,batch_size=args.class_in_batch)
     else:
         Dataset = VReID_Dataset(args.info,crop=args.crop,flip=args.flip,jitter=args.jitter,pretrained_model=args.pretrain,dataset=args.dataset)
         train_Dataloader = Get_train_DataLoader(Dataset,batch_size=args.batch_size)
@@ -243,24 +292,40 @@ if __name__ == '__main__':
 
     ## Get Model
     if args.triplet:
-        net = models.ResNet(Dataset.n_id,n_layers=args.n_layer,pretrained=args.pretrain)
+        if args.unsupervised:
+            net = models.FeatureResNet(Dataset.n_id,n_layers=args.n_layer,pretrained=args.pretrain)
+        else:
+            net = models.ResNet(Dataset.n_id,n_layers=args.n_layer,pretrained=args.pretrain)
     else:
         if args.dataset != 'VeRi_ict':
             net = models.ResNet(Dataset.n_id,n_layers=args.n_layer,pretrained=args.pretrain)
         else:
             net = models.ICT_ResNet(Dataset.n_id,Dataset.n_color,Dataset.n_type,n_layers=args.n_layer,pretrained=args.pretrain)
+
+    if args.load_ckpt is not None:
+        state_dict = torch.load(args.load_ckpt)
+        for key in list(state_dict.keys()):
+            if key.find('fc') != -1 and key.find('fc_c') == -1 :
+                del state_dict[key]
+
+        net.load_state_dict(state_dict)
+
     if torch.cuda.is_available():
         net.cuda()
     
     if args.save_model_dir !=  None:
         os.system('mkdir -p %s' % os.path.join(args.save_model_dir))
+
     ## train
-    if args.load_ckpt == None:
+    if True: #args.load_ckpt == None:
         print('total data:',len(Dataset))
-        print('training data:',Dataset.n_train)
-        print('validation data:',Dataset.n_val)
+        #print('training data:',Dataset.n_train)
+        #print('validation data:',Dataset.n_val)
         if args.triplet:
-            train_triplet(args, Dataset, train_Dataloader, val_Dataloader, net)
+            if args.unsupervised:
+                train_unsupervised_triplet(args, Dataset, train_Dataloader, net)
+            else:
+                train_triplet(args, Dataset, train_Dataloader, val_Dataloader, net)
         else:
             if args.dataset != 'VeRi_ict':
                 train(args,Dataset,train_Dataloader,val_Dataloader,net)
