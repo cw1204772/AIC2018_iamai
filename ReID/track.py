@@ -39,6 +39,13 @@ class Track(object):
         seq_ids = seq_id * np.ones((self.dets.shape[0],1))
         loc_ids = loc_id * np.ones((self.dets.shape[0],1))
         self.dets = np.concatenate([self.dets, seq_ids, loc_ids], axis=1)
+    def seq_id(self):
+        if self.dets.shape[1] < 8:
+            raise RuntimeError('this track does not have seq id!')
+        return self.dets[0, 7]
+    def assign_id(self, id):
+        self.id = id
+        self.dets[:,1] = id
     def dump(self):
         if self.dets.shape[1] == 9:
             return self.dets[:, [7]+list(range(7))]
@@ -76,3 +83,17 @@ def bbox_dist(pos1, pos2):
 def l2dist(feat1, feat2):
   return np.sum((feat1-feat2)**2)
 
+def intersect_test(track1, track2):
+  if track1.birth_time() > track2.birth_time():
+    t1 = track2
+    t2 = track1
+  else:
+    t1 = track1
+    t2 = track2
+  #print(t1.birth_time(), t1.dead_time(), '<-->', t2.birth_time(), t2.dead_time())
+  if t1.dead_time() >= t2.birth_time():
+    #print('True')
+    return True
+  else:
+    #print('False')
+    return False
