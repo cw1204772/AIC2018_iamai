@@ -414,11 +414,14 @@ class Unsupervised_TripletImage_Dataset(Dataset):
     def __len__(self):
         return self.len
 
+def Get_test_DataLoader(dataset,batch_size=128,shuffle=False,num_workers=6):
+    return DataLoader(dataset,batch_size = batch_size,shuffle=shuffle,num_workers=num_workers)
+
 def Get_train_DataLoader(dataset,batch_size=128,shuffle=True,num_workers=6):
     sampler = SubsetRandomSampler(dataset.train_index)
     return DataLoader(dataset,batch_size = batch_size,sampler=sampler,num_workers=num_workers)
 
-def Get_val_DataLoader(dataset,batch_size=128,shuffle=True,num_workers=6):
+def Get_val_DataLoader(dataset,batch_size=128,shuffle=False,num_workers=6):
     sampler = SubsetRandomSampler(dataset.val_index)
     return DataLoader(dataset,batch_size = batch_size,sampler=sampler,num_workers=num_workers)
 
