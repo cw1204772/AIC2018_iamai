@@ -33,8 +33,12 @@ class Track(object):
         if self.img_paths is not None and t.img_paths is not None:
             t.img_paths = self.img_paths + t.img_paths
         self.dets = np.zeros((0,0))
-    def summarized_feature(self):
-        return np.mean(self.features, axis=0)
+    def summarized_feature(self, method='avg'):
+        if method == 'avg':
+            return np.mean(self.features, axis=0)
+        elif method == 'max':
+            return np.max(self.features, axis=0)
+        else: raise ValueError('Unrecognized feature summarization method!')
     def assign_seq_id(self, seq_id,loc_id):
         seq_ids = seq_id * np.ones((self.dets.shape[0],1))
         loc_ids = loc_id * np.ones((self.dets.shape[0],1))
