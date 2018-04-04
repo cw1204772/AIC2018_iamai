@@ -292,6 +292,58 @@ def check_conflict(tracks):
     dets = np.concatenate(dets, axis=0)
     return conflict_idx
 
+def remove(args, tracks):
+    """Remove detections from tracks due to some mysterious reason"""
+    filter_dets = np.loadtxt(args.filter)
+    d = {tuple(row[[0,1,3,4]].astype(int)):True for row in filter_dets}
+    del_idx = []
+    for i,t in enumerate(tracks):
+        dets = t.dump()
+        temp = []
+        for j in range(dets.shape[0]):
+            k = tuple(dets[j,[0,1,3,4]].astype(int))
+            if k not in d:
+                temp.append(dets[j,:])
+        temp = np.stack(temp, axis=0)
+        if not debug_loc(temp, loc_seq_id):
+            del_idx.append(i)
+    print('removing %d tracks by some hack!' % len(del_idx))
+    for i in reversed(del_idx):
+        del tracks[i]
+    return tracks
+
+def fill(tracks, n):
+    """Squeeze tracks into n tracks"""
+    scores = []
+    for t in tracks:
+        mean_feature = np.mean(t.features, axis=0).reshape(1,-1)
+        norms = np.linalg.norm((t.features - mean_feature), axis=1)
+        scores.append(np.mean(norms))
+    sample = np.argsort(scores)
+
+    outputs = []
+    for i,idx in enumerate(sample.tolist()):
+        if i < n:
+            outputs.append(tracks[idx])
+        else:
+            outputs[i%n] = priority_merge(outputs[i%n], tracks[idx])
+    return outputs
+
+def priority_merge(major_track, minor_track):
+    """Merge 2 tracks with priority"""
+    d = {tuple(row[0:2]):True for row in major_track.dump()}
+    dump_dets = minor_track.dump()
+    dets = minor_track.dets
+    valid_dets = []
+    for i in range(dump_dets.shape[0]):
+        k = tuple(dump_dets[i,0:2])
+        if k not in d:
+            valid_dets.append(dets[i])
+    minor_track.dets = np.stack(valid_dets, axis=0)
+    minor_track.merge(major_track)
+    assert debug_frame(major_track.dump())
+    return major_track
+
 def sample_tracks(tracks, n):
     """Sample top n most densly-clustered tracks"""
     scores = []
@@ -347,6 +399,7 @@ if __name__ == '__main__':
     parser.add_argument('--k', type=int, help='# of clusters')
     parser.add_argument('--n', type=int, help='bottom up parameter')
     parser.add_argument('--sum', default='avg', help='feature summarization method: max or avg')
+    parser.add_argument('--filter', help='the filter file for mysterious filtering')
     args = parser.parse_args()
     
     # Create sequence names
@@ -370,22 +423,26 @@ if __name__ == '__main__':
             single_cam_tracks += tracks
         loc_seq_id.append(seqs)
         multi_cam_tracks.append(single_cam_tracks)
+
     # Multi camera matching
     # len of multi_cam_tracks is equal to the number of Locations
-    
     tracks = multi_camera_matching(args, multi_cam_tracks)
     with open(os.path.join(args.output_dir, 'after_mct.pkl'), 'wb') as f:
         pickle.dump(tracks, f)
-    
     #with open(os.path.join(args.output_dir, 'after_mct.pkl'), 'rb') as f:
     #    tracks = pickle.load(f)
     #print(len(tracks))
     #sys.exit()
-    
 
-    # Sample <100 tracks
-    tracks = sample_tracks(tracks, 100)
+    # Remove detections with known submissions
+    tracks = remove(args, tracks)
+    with open(os.path.join(args.output_dir, 'after_remove.pkl'), 'wb') as f:
+        pickle.dump(tracks, f)
+
+    # Decide the final 100 tracks
+    #tracks = sample_tracks(tracks, 100)
     #tracks = sample_tracks(tracks, 300)[200:300]
+    tracks = fill(tracks, 100)
 
     # Re-index id & final check
     for i,t in enumerate(tracks):
