@@ -7,13 +7,15 @@ import numpy as np
 import os
 import sys
 from collections import defaultdict
-from sklearn.cluster import MiniBatchKMeans
+from sklearn.cluster import MiniBatchKMeans, KMeans, AgglomerativeClustering
 from sklearn.preprocessing import normalize
-from sklearn.neighbors import KNeighborsClassifier
+from sklearn.neighbors import KNeighborsClassifier, kneighbors_graph
 import pickle
 import pathlib
 import shutil
 from tqdm import tqdm
+import torch
+import copy
 
 def import_pkl(pkl_name):
     """Import pickle file"""
@@ -30,6 +32,85 @@ def dump_imgs(output_dir, track):
         p = path.split('/')
         name = p[-2] + '_' + p[-1]
         shutil.copyfile(path, os.path.join(output_dir, name))
+
+def compute_distance(combie_list):
+    features = []
+    for t in combie_list:
+        features.append(t.summarized_feature())
+    features = torch.nn.functional.normalize(torch.FloatTensor(np.vstack(features))).cuda()
+    dis_matrix = -1*torch.mm(features,torch.t(features))
+    dis_matrix = dis_matrix.cpu().numpy()
+    return dis_matrix
+
+def compute_k_reciprocal(k,arg_sort_matrix,rank_list,delete_idx,now_idx,bar=False):
+    rank_list_left = []
+    points_of_rank_list = []
+    set_rank = set(rank_list)
+    if bar == True:
+        pbar = tqdm(total=len(rank_list),leave=True)
+    for j in rank_list:
+        tmp_idx = arg_sort_matrix[j][:2500]
+        tmp_idx = [idx for idx in list(tmp_idx) if idx not in delete_idx]
+        if now_idx in tmp_idx[:k]: 
+            rank_list_left.append(j)
+            point = len(set_rank & set(tmp_idx[:k]))
+            points_of_rank_list.append(point)
+        if bar: pbar.update(1)
+    if bar: pbar.close()
+    
+    rank_list_left = np.array(rank_list_left)[np.argsort(np.array(points_of_rank_list))[::-1]]
+    return list(rank_list_left)
+        
+def re_ranking(dis_matrix,q_idx):
+    k = 20
+    final_list = []
+    print('Sorting distance matrix...')
+    arg_sort_matrix = np.argsort(dis_matrix,axis=1)
+
+    for c,i in enumerate(q_idx):
+        #print('Compute No.%d query'%(c+1))
+        sorted_idx = arg_sort_matrix[i][:2500]
+        # filter the query index out
+        sorted_idx = [idx for idx in list(sorted_idx) if idx not in q_idx]
+        rank_k = sorted_idx[:k]
+        ## k-reciprocal
+        #print('-->Start K-reciprocal...')
+        no_i_q_idx = [idx for idx in q_idx if idx!=i]
+        rank_k_left = compute_k_reciprocal(k,arg_sort_matrix,rank_k,no_i_q_idx,i,bar=False)
+        #print('Left %d'%(len(rank_k_left)))
+        '''
+        ##expansion
+        print('-->Left %d in rank list. Start expansion...'%(len(rank_k_left)))
+        half_k = k//2 
+        points = np.zeros(dis_matrix.shape[0])
+        pbar = tqdm(total=len(rank_k_left),leave=True)
+        for c,j in enumerate(rank_k_left):
+            points[j] = k-c
+            sorted_idx = arg_sort_matrix[j][:2500]
+            # filter the query index out
+            sorted_idx = [idx for idx in list(sorted_idx) if idx not in q_idx]
+            rank_h_k = sorted_idx[:half_k]
+            ## k-reciprocal
+            add_j_q_idx = q_idx + [j]
+            rank_h_k_left = compute_k_reciprocal(half_k,arg_sort_matrix,rank_h_k,add_j_q_idx,j)
+            # give points
+            for index in range(len(rank_h_k_left)):
+                p = (k-c)-((k-c)/half_k)*(index+1)
+                points[rank_h_k_left[index]] += p
+            pbar.update(1)
+        pbar.close()
+        non_zero = np.count_nonzero(points)
+        print('Final left %d'%(non_zero))
+        final_index = np.argsort(points)[::-1][:non_zero]
+        print(final_index)
+        '''
+        if c%50 == 0: print(c)
+    
+        final_list.append(rank_k_left)
+        #final_list.append(final_index)
+    return final_list
+
+
 
 def clustering(args, tracks):
     """Cluster tracks"""
@@ -132,6 +213,135 @@ def multi_camera_matching(opt,MCT):
                 clusters.append(track)
         print('%d qualified clusters!' % len(clusters))
         return clusters
+
+    elif opt.method == 're-rank-4' or opt.method == 're-rank-all':
+        print('reranking...')
+        # First cluster every Location
+        '''
+        Locs = [[],[],[],[]]
+        for i,loc_tracks in enumerate(MCT):
+            print('Loc%d'%(i+1))
+            opt.k = len(loc_tracks)//opt.n
+            # classes = clustering(opt,loc_tracks)
+            # with open(os.path.join(opt.output_dir, 'Loc%d_cluster.pkl' % (i+1)), 'wb') as f:
+                # pickle.dump(classes, f)
+            with open(os.path.join('/home/cw1204772/Dataset/AIC2018/MCT/fasta_joint_vanilla_biased_knn_avg','Loc%d_cluster.pkl'%(i+1)),'rb') as f:
+                classes = pickle.load(f)
+
+            for class_id in tqdm(np.unique(classes).tolist()):
+                select = np.where(classes == class_id)[0]
+                tracks = [loc_tracks[j] for j in select.tolist()]
+                track = merge_tracks(opt,tracks)
+                assert debug_frame(track.dump())
+                Locs[i].append(track)
+        with open(os.path.join(opt.output_dir,'Locs.pkl'),'wb') as f:
+            pickle.dump(Locs,f)
+        '''
+        with open(os.path.join(opt.output_dir,'Locs.pkl'),'rb') as f:
+            Locs  = pickle.load(f)
+        ###############
+        
+        with open(os.path.join(opt.output_dir,'Loc4_cluster.pkl'), 'rb') as f:
+            classes = pickle.load(f)
+        temp = []
+        for class_id in tqdm(np.unique(classes).tolist()):
+            select = np.where(classes == class_id)[0]
+            tracks = [MCT[3][j] for j in select.tolist()]
+            track = merge_tracks(opt,tracks)
+            assert debug_frame(track.dump())
+            temp.append(track)
+        Locs[3] = temp
+        with open(os.path.join(opt.output_dir,'Locs.pkl'),'wb') as f:
+            pickle.dump(Locs,f)       
+         
+        ###############
+        
+        q_idx = list(range(len(Locs[3])))
+        if opt.method == 're-rank-all':
+            tracks = Locs[3] + Locs[0] + Locs[1] + Locs[2]
+            dis_matrix = compute_distance(tracks)
+            rank_list = re_ranking(dis_matrix, q_idx)
+            
+            outputs = []
+            for i, ranks in enumerate(rank_list):
+                track = tracks[q_idx[i]]
+                for idx in ranks[:opt.n]:
+                    track = priority_merge(track, tracks[idx])
+                if debug_loc(track.dump(), loc_seq_id):
+                    outputs.append(track)
+            return outputs
+            
+        elif opt.method == 're-rank-4':
+            
+            q_idx = list(range(len(Locs[3])))
+            multi_loc_tracks = []
+            for i in [0,1,2]:
+                tracks = Locs[3] + Locs[i]
+                dis_matrix = compute_distance(tracks)
+                rank_list = re_ranking(dis_matrix, q_idx)
+                with open(os.path.join(opt.output_dir, 're_rank%d.pkl' % i), 'wb') as f:
+                    pickle.dump(rank_list, f)
+                #with open(os.path.join(opt.output_dir, 're_rank%d.pkl' % i), 'rb') as f:
+                #    rank_list = pickle.load(f)
+
+                #rank_list = [[len(tracks)-1], [], [len(tracks)-1,len(tracks)-2]]
+                #for i in range(len(q_idx)-3):
+                #    rank_list.append([])
+                assert len(rank_list)==len(q_idx)
+                
+                single_loc_tracks = []
+                for j, ranks in enumerate(rank_list):
+                    #print(ranks)
+                    if len(ranks)==0:
+                        single_loc_tracks.append(None)
+                        #print('None')
+                    else:
+                        track = copy.copy(tracks[ranks[0]])
+                        if len(ranks) > 1:
+                            for idx in ranks[1:]:
+                                track = priority_merge(track, tracks[idx])
+                                if tracks[idx].dump() is None: 
+                                    sys.exit('not right!')
+                        #print(track.dump())
+                        single_loc_tracks.append(track)
+                        if single_loc_tracks[-1].dump() is None: 
+                            print(i,j)
+                            print(ranks)
+                            sys.exit('not right!')
+                    #if j == 2:
+                    #    print(single_loc_tracks[-1].dump())
+                    #    sys.exit()
+                    #if j == 5: sys.exit()
+                multi_loc_tracks.append(single_loc_tracks)
+            with open(os.path.join(opt.output_dir, 'after_re_ranking.pkl'), 'wb') as f:
+                pickle.dump(multi_loc_tracks, f)
+            
+            with open(os.path.join(opt.output_dir, 'after_re_ranking.pkl'), 'rb') as f:
+                multi_loc_tracks = pickle.load(f)
+            
+            
+            #print(multi_loc_tracks[0][2].dump())
+
+            outputs = []
+            for i, idx in enumerate(q_idx):
+                track = Locs[3][idx]
+                for j in range(len(multi_loc_tracks)):
+                    #print('--------------------')
+                    #print(j,i)
+                    #if multi_loc_tracks[j][i].dump() is None: 
+                    #print(j,i)
+                    #print(multi_loc_tracks[j][i] is not None)
+                    #print(multi_loc_tracks[j][i].dump().shape)
+                    if multi_loc_tracks[j][i] is not None:
+                        #print(multi_loc_tracks[j][i].dump())
+                        #print(multi_loc_tracks[j][i].dump().shape)
+                        #print(track.dump().shape)
+                        multi_loc_tracks[j][i].merge(track)
+                    #print(multi_loc_tracks[0][2].dump())
+                if debug_loc(track.dump(), loc_seq_id):
+                    outputs.append(track)
+            return outputs
+
     elif opt.method == 'biased_knn':
         
         ref_tracks = []
@@ -244,7 +454,49 @@ def multi_camera_matching(opt,MCT):
                 outputs.append(track)
         print('%d qualified clusters!' % len(outputs))
         return outputs
-      
+        '''
+        elif opt.method == 'hac':
+            tracks = []
+            # clustering within same location
+            for i, loc_tracks in enumerate(MCT):
+                print('Loc%d' % (i+1))
+                opt.k = len(loc_tracks) // opt.n
+                #classes = clustering(opt, loc_tracks)
+                #with open(os.path.join(opt.output_dir, 'Loc%d_cluster.pkl' % (i+1)), 'wb') as f:
+                #    pickle.dump(classes, f)
+                with open(os.path.join(opt.output_dir, 'Loc%d_cluster.pkl' % (i+1)), 'rb') as f:
+                    classes = pickle.load(f)
+    
+                for class_id in tqdm(np.unique(classes).tolist()):
+                    select = np.where(classes == class_id)[0]
+                    tracks = [loc_tracks[j] for j in select.tolist()]
+                    track = merge_tracks(opt, tracks)
+                    assert debug_frame(track.dump())
+                    tracks.append(track)
+            
+            # HAC
+            features = [t.summarized_feature(opt.sum) for t in tracks]
+            #knn_graph = kneighbors_graph(features, 30, include_self=False, n_jobs=-1)
+            #with open(os.path.join(opt.output_dir, 'knn_graph.pkl'), 'wb') as f:
+            #    pickle.dump(knn_graph, f)
+            hac = AgglomerativeClustering(linkage='ward',
+                                          connectivity=None,
+                                          n_clusters=opt.k)
+            classes = hac.fit_predict(features)
+            with open(os.path.join(opt.output_dir, 'hac_classes.pkl'), 'wb') as f:
+                pickle.dump(classes, f)
+    
+            # merge and check constraint
+            outputs = []
+            for class_id in tqdm(np.unique(classes).tolist()):
+                select = np.where(classes == class_id)[0]
+                t = [tracks[i] for i in select.tolist()]
+                track = merge_tracks(opt, t)
+                if debug_loc(track.dump(), loc_seq_id):
+                    outputs.append(track)
+            print('%d qualified clusters!' % len(outputs))
+            return outputs
+        '''
     else:
         raise NotImplementedError('Unrecognized MCT method!')
 
@@ -329,8 +581,33 @@ def fill(tracks, n):
             outputs[i%n] = priority_merge(outputs[i%n], tracks[idx])
     return outputs
 
-def priority_merge(major_track, minor_track):
+def cluster_fill(args, tracks, n):
+    scores = []
+    for t in tracks:
+        mean_feature = np.mean(t.features, axis=0).reshape(1,-1)
+        norms = np.linalg.norm((t.features - mean_feature), axis=1)
+        scores.append(np.mean(norms))
+    sample = np.argsort(scores)
+    tracks = [tracks[i] for i in sample.tolist()]
+
+    args.k = n
+    args.cluster = 'kmeans'
+    classes = clustering(args, tracks)
+    
+    outputs = []
+    for class_id in range(n):
+        select = np.where(classes == class_id)[0]
+        temp_track = tracks[select[0]]
+        if select.shape[0] > 1:
+            for i in select[1:].tolist():
+                temp_track = priority_merge(temp_track, tracks[i])
+        outputs.append(temp_track)
+    return outputs
+
+def priority_merge(major_track_, minor_track_):
     """Merge 2 tracks with priority"""
+    major_track = copy.copy(major_track_)
+    minor_track = copy.copy(minor_track_)
     d = {tuple(row[0:2]):True for row in major_track.dump()}
     dump_dets = minor_track.dump()
     dets = minor_track.dets
@@ -339,7 +616,8 @@ def priority_merge(major_track, minor_track):
         k = tuple(dump_dets[i,0:2])
         if k not in d:
             valid_dets.append(dets[i])
-    minor_track.dets = np.stack(valid_dets, axis=0)
+    if len(valid_dets) == 0: minor_track.dets = np.zeros((0,9))
+    else: minor_track.dets = np.stack(valid_dets, axis=0)
     minor_track.merge(major_track)
     assert debug_frame(major_track.dump())
     return major_track
@@ -442,7 +720,8 @@ if __name__ == '__main__':
     # Decide the final 100 tracks
     #tracks = sample_tracks(tracks, 100)
     #tracks = sample_tracks(tracks, 300)[200:300]
-    tracks = fill(tracks, 100)
+    #tracks = fill(tracks, 100)
+    tracks = cluster_fill(args, tracks, 100)
 
     # Re-index id & final check
     for i,t in enumerate(tracks):
