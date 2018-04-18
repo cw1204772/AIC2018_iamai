@@ -1,70 +1,146 @@
-# NVIDIA AI Challenge
+# 2018 NVIDIA AI City Challenge
 
-Team name: iamai
+Hi! We are participating team 37, **"iamai"**,  of 2018 NVIDIA AI City Challenge Track 3.  
+This is also the implementation of Chih-Wei Wu, Chih-Ting Liu, Chen-En Jiang, Wei-Chih Tu, Shao-Yi Chien **"Vehicle Re-Identification with the Space-Time Prior"** _CVPRW, 2018_.  
+It is an end-to-end vehicle detection, tracking, re-identification system.
 
-Use `git clone --recurse-submodules https://github.com/cw1204772/AIC2018_iamai.git` to clone the repository.  
-If you have already git clone the repository but have not clone the submodule, execute:
+To clone this repo, please execute:
+```
+git clone --recurse-submodules https://github.com/cw1204772/AIC2018_iamai.git  
+```
+If you've already clone this repo but haven't clone the submodule (`Tracking/iou-tracker`), execute:
 ```
 git submodule init
 git submodule update
 ```
 
-## Detection
+Requirements:   
+Python 3.5 or newer.  
+Run `pip3 install -r requirements.txt` to install all dependence package.
 
-## Tracking
+## Demo
 
-We use [iou-tracker](https://github.com/bochinski/iou-tracker) for tracking. To use it:
-
+Hurray!  
+We've managed to create a script for running the entire system!  
+Please download all 2018 NVIDIA AI City Challenge Track 3 videos into `<DATASET_DIR>` and execute:
 ```
-python3 Tracking/iou-tracker/demo.py -d <detection_csv> -o <output_csv> -sl 0.1 -sh 0.7 -si 0.5 -tm 2
+./run.sh <DATASET_DIR> <WORK_DIR>
 ```
+(`<WORK_DIR>` will be the storage place for intermediate product of our system)  
+Then, wait for a few days.  
+The final result for submission will be here: `<WORK_DIR>/MCT/fasta/track3.txt`.  
+(Assuming there are no bugs!:smiley:)
 
-## ReID
+**Reminder**  
+Make sure there is enough space for `<WORK_DIR>`!
+(Probably 100GB of space.)
 
-### Use in Single Camera Tracking
-```
-python3 SCT.py <tracking_csv> <video> <output_pkl> --reid_model <reid_model> --n_layers <n_layers>
-               --window 15 --f_th 150 --b_th 200 --int 10
-```
+## Detail Guide
+If you have some spare time and decide to dig into our system, we provide the tedious instruction for each stage of our system here.
 
-### Train on VeRi Dataset
-```
-cd ReID/ReID_CNN
-```
+### Detection
 
-1. Create train, query, gallery info .txt files
+We use [detectron](https://github.com/facebookresearch/Detectron) for detection. Please refer to the [INSTALL.md](https://github.com/facebookresearch/Detectron/blob/master/INSTALL.md) to install caffe2 and other dependencies for inference.
+
+1. Convert all the videos to frames
+   
+   We assume that you organize your videos dataset as the directory structure below:
    ```
-   bash setup.sh <dir_to_VeRi> <dir_to_comp_dataset> <dir_to_sv_dataset>
+   /path/to/AIC_videos_dataset
+     |__Loc1_1.mp4
+     |__...
+     |__Loc4_3.mp4
+   ```
+   
+   After running:
+   ```
+   python2 Utils/convert.py --video_dir_path /path/to/AIC_videos_dataset --images_dir_path /path/to/AIC_images_dataset
+   ```
+   
+   And the new directory structure will become:
+   ```
+   /path/to/AIC_frames_dataset
+     |__Loc1_1
+     |  |__<frame_1>.jpg
+     |  |__...
+     |  |__<frame_N>.jpg
+     |__...
+     |__Loc4_3
    ```
 
-2. Training
-   * Train classification model with VeRi or VeRi\_ict dataset
+2. Infer frames for every locations
+   ```
+   cd $AIC2018_iamai/Detection/
+   python2 tools/infer_simple_txt.py \
+       --cfg configs/12_2017_baselines/e2e_mask_rcnn_R-101-FPN_2x.yaml \
+       --output-dir /path/to/submit \
+       --image-ext jpg \
+       --wts https://s3-us-west-2.amazonaws.com/detectron/35861858/12_2017_baselines/e2e_mask_rcnn_R-101-FPN_2x.yaml.02_32_51.SgT4y1cO/output/train/coco_2014_train:coco_2014_valminusminival/generalized_rcnn/model_final.pkl \
+       /path/to/AIC_dataset
+   ```
+3. Suppress non-realistic bounding boxes
+   ```
+   cd $AIC2018_iamai/Detection/
+   python2 tools/suppress.py --in_txt_file_path <input_txt> --out_txt_file_path <output_txt> --threshold 1e-5 --upper_area 1e5 --lower_side 25 --aspect_ratio 5
+   ```
 
-     ```
-     python3 train.py --info VeRi_train_info.txt --lr 0.001 --batch_size 64 --n_epochs 20 --n_layer 18 --dataset VeRi
-     ```
+### Tracking
 
-   * Train triplet model with VeRi dataset
-     ```
-     python3 train.py --info VeRi_train_info.txt --n_epochs 1500 --save_model_dir ./ckpt_2 --n_layer 18 --margin soft --class_in_batch 32 --triplet --lr 0.001 --batch_hard --save_every_n_epoch 50
-     ``` 
+We use our optimized version of [iou-tracker](https://github.com/bochinski/iou-tracker) for tracking.  
+It will link detections into tracklets by simple IOU constraint within a video.
+To use it, try:
 
-3. dump distance matrix
 ```
-python3 compute_VeRi_dis.py --load_ckpt <model_path> --n_layer <Resnet_layer> --gallery_txt VeRi_gallery_info.txt --query_txt VeRi_query_info.txt --dis_mat dist_CNN.mat 
+python3 Tracking/iou-tracker/demo.py [-h] -d DETECTION_PATH -o OUTPUT_PATH [-sl SIGMA_L]
+                                     [-sh SIGMA_H] [-si SIGMA_IOU] [-tm T_MIN]
 ```
 
-4. compute cmc curve
-```  
-  1. open matlab in the "VeRi_cmc/" directory
-  2. open "baseline_evaluation_FACT_776.m" file
-  3. change "dis_CNN" mat path, "gt_index",  "jk_index" txt file path
-  4. run and get plot
+### Post-Tracking
+
+In this step, we will extract keypoint images within each tracklet.  
+To use it, try:
+
+```
+python3 ReID/Post_tracking.py [-h] [--dist_th DIST_TH] [--size_th SIZE_TH]
+                              [--mask MASK] [--img_dir IMG_DIR]
+                              tracking_csv video output
 ```
 
-## Visualize
+### Train CNN Feature Extractor
 
-Use it to draw csv file onto video.
+If you wish to train a CNN feature extractor from scratch, please refer to `ReID/ReID_CNN/Readme.md`.  
+Or, you can download our pre-trained model by executing
+```
+wget https://www.dropbox.com/s/yexvkmryputw9ju/model_880_base.ckpt?dl=1 -O ReID/ReID_CNN/model_880_base.ckpt
+```
+Model will be at `ReID/ReID_CNN/model_880_base.ckpt`
+
+### Single Camera Tracking
+
+In this step, we associate tracklets within a video by comparing features and space-time information.  
+To use it, try:
+
+```
+python3 ReID/SCT.py [-h] [--window WINDOW] [--f_th F_TH] [--b_th B_TH] [--verbose]
+                    --reid_model REID_MODEL --n_layers N_LAYERS
+                    [--batch_size BATCH_SIZE]
+                    pkl output
+```
+
+### Multi Camera Matching
+
+There are a few matching methods to choose from, including the most successful `re-rank-4`.
+To use it, try:
+
+```
+python3 ReID/MCT.py [-h] [--dump_dir DUMP_DIR] [--method METHOD] [--cluster CLUSTER]
+                    [--normalize] [--k K] [--n N] [--sum SUM] [--filter FILTER]
+                    tracks_dir output_dir
+```
+
+## Tools
+
+Here is a visualization tool we create to cheer your eyes during the laborious running process.
 
 ```
 python3 Utils/visualize.py [-h] [--w W] [--h H] [--fps FPS] [--length LENGTH]
@@ -74,4 +150,22 @@ python3 Utils/visualize.py [-h] [--w W] [--h H] [--fps FPS] [--length LENGTH]
                            [--score_th SCORE_TH] [--cam CAM] [--cam_pos CAM_POS]
                            [--ss SS] [--wh_mode]
                            INPUT_VIDEO OUTPUT_VIDEO LABEL_FILE MODE
+```
+
+
+## References
+
+* NVIDIA AI City Challenge. https://www.aicitychallenge.org/, 2018.
+* R. Girshick, I. Radosavovic, G. Gkioxari, P. Dollar, and K. He. Detectron. https://github.com/facebookresearch/detectron, 2018.
+* E. Bochinski, V. Eiselein, and T. Sikora. High-speed tracking-by-detection without using image information. https://github.com/bochinski/iou-tracker. AVSS, 2017.
+
+## Citing
+
+```
+@inproceedings{wu2018vreid,
+  title={Vehicle Re-Identification with the Space-Time Prior},
+  author={Wu, Chih-Wei and Liu, Chih-Ting and Jiang, Chen-En and Tu, Wei-Chih and Chien, Shao-Yi},
+  booktitle={IEEE Conference on Computer Vision and Pattern Recognition (CVPR) Workshop},
+  year={2018},
+}
 ```

@@ -46,6 +46,7 @@ if __name__ == '__main__':
     txt_file.write('img_path id color type\n')
     for i in range(len(img_list)):
         img_path = img_list[i]
+        img_path = img_path.replace('.jpg','.png') #BUG#
         V_ID = str(V_ID_dict[V_ID_list[i]])
         colorID = colorID_list[i]
         typeID = typeID_list[i]

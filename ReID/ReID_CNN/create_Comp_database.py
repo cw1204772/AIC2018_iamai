@@ -2,6 +2,7 @@ import scipy.io as sio
 import os
 import argparse
 import numpy as np
+import pathlib
 
 def Remap_Label(labels):
     label_dict = {}
@@ -41,6 +42,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Database generator for UA-DETRAC dataset')
     parser.add_argument('--sv_dataset_dir', help='the dir containing sv dataset')
     parser.add_argument('--comp_dataset_dir', help='the dir containing comp dataset ')
+    parser.add_argument('--sv_image_dir', help='the dir containing sv dataset(image)')
+    parser.add_argument('--comp_image_dir', help='the dir containing comp dataset(image)')
     parser.add_argument('--info_dir', help='output dir')
     args = parser.parse_args()
     os.system('mkdir -p %s'%(args.info_dir))   
@@ -64,7 +67,8 @@ if __name__ == '__main__':
     file.write('img_path make model color\n')
     for row in file_train:
         id,file_name = row.strip().split('/')
-        path_name = os.path.abspath(os.path.join(args.sv_dataset_dir,'image',row.strip()))
+        path_name = os.path.join(args.sv_image_dir,'image',row.strip())
+        path_name = str(pathlib.Path(path_name).resolve())
         make = str(make_model_label[int(id)-1][0])
         model = str(make_model_label[int(id)-1][1])
         color = str(color_dict[row.strip()])
@@ -75,7 +79,8 @@ if __name__ == '__main__':
     file.write('img_path make model color\n')
     for row in file_test:
         id,file_name = row.strip().split('/')
-        path_name = os.path.abspath(os.path.join(args.sv_dataset_dir,'image',row.strip()))
+        path_name = os.path.join(args.sv_image_dir,'image',row.strip())
+        path_name = str(pathlib.Path(path_name).resolve())
         make = str(make_model_label[int(id)-1][0])
         model = str(make_model_label[int(id)-1][1])
         color = str(color_dict[row.strip()])
@@ -111,7 +116,8 @@ if __name__ == '__main__':
     file.write('img_path make model angle bbox_x1 bbox_y1 bbox_x2 bbox_y2\n')
     for row in file_train:
         row = row.strip()
-        file_path = os.path.abspath(os.path.join(args.comp_dataset_dir,'image',row))
+        file_path = os.path.join(args.comp_image_dir,'image',row)
+        path_name = str(pathlib.Path(path_name).resolve())
         label_file = open(os.path.join(args.comp_dataset_dir,'label',row.replace('jpg','txt')),'r')
         angle,_,co = label_file.readlines()
         angle=str(0) if int(angle.strip())==-1 else str(angle.strip())
@@ -123,7 +129,8 @@ if __name__ == '__main__':
     file.write('img_path make model angle bbox_x1 bbox_y1 bbox_x2 bbox_y2\n')
     for row in file_test:
         row = row.strip()
-        file_path = os.path.abspath(os.path.join(args.comp_dataset_dir,'image',row))
+        file_path = os.path.join(args.comp_image_dir,'image',row)
+        path_name = str(pathlib.Path(path_name).resolve())
         label_file = open(os.path.join(args.comp_dataset_dir,'label',row.replace('jpg','txt')),'r')
         angle,_,co = label_file.readlines()
         angle=str(0) if int(angle.strip())==-1 else str(angle.strip())
