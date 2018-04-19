@@ -19,6 +19,7 @@ If you experience any bugs or problems, please contact us. (cwwu@media.ee.ntu.ed
 
 ## Requirements
 
+It requires both python 2 and 3 to run our system.
 * Python 2.7 or newer:  
   Please install [detectron](https://github.com/facebookresearch/Detectron), a powerful open-sourced object detector thanks to Facebook. Please refer to the [INSTALL.md](https://github.com/facebookresearch/Detectron/blob/master/INSTALL.md) to install all dependencies for inference.
 * Python 3.5 or newer:  
@@ -29,12 +30,12 @@ If you experience any bugs or problems, please contact us. (cwwu@media.ee.ntu.ed
 Hurray!  
 We've managed to create a script for running the entire system!  
 First, Download all 2018 NVIDIA AI City Challenge Track 3 videos into `<DATASET_DIR>`.  
-Then, you need to download the pre-trained Re-ID CNN model. Please email your full name and affiliation to the contact person (cwwu@media.ee.ntu.edu.tw) for obtaining the download link. Download the model to `ReID/ReID_CNN/`.
+Then, you need to download the pre-trained Re-ID CNN model. Please email your full name and affiliation to the contact person (cwwu@media.ee.ntu.edu.tw) for obtaining the download link. Download the model to `ReID/ReID_CNN/`.  
 Last, execute:
 ```
 ./run.sh <DATASET_DIR> <WORK_DIR>
 ```
-**Important**
+__\*\*Important**__  
 `<WORK_DIR>` will be the storage place for intermediate product of our system. Make sure there is enough space for `<WORK_DIR>`!  
 (We estimate at least 1.2TB of space!:open_mouth: Because we will unpact video into images for detection.)  
 Also, please use absolute path for both `<DATASET_DIR>` and `<WORK_DIR>`.
@@ -45,7 +46,7 @@ The final result will show up here: `<WORK_DIR>/MCT/fasta/track3.txt`.
 
 ## Detail Guide
 
-If you have some spare time and decide to dig into our system, we provide the tedious instruction for each stage of our system here.
+Here, we provide detail instructions for each stage of our system.
 
 ### Detection
 
@@ -145,7 +146,7 @@ python3 ReID/MCT.py [-h] [--dump_dir DUMP_DIR] [--method METHOD] [--cluster CLUS
 
 ## Tools
 
-Here is a visualization tool we create to cheer your eyes during the laborious running process.
+Here is a visualization tool we create to cheer your eyes during the tedious running process.
 
 ```
 python3 Utils/visualize.py [-h] [--w W] [--h H] [--fps FPS] [--length LENGTH]
