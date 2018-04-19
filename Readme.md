@@ -36,8 +36,7 @@ Last, execute:
 ./run.sh <DATASET_DIR> <WORK_DIR>
 ```
 __\*\*Important**__  
-`<WORK_DIR>` will be the storage place for intermediate product of our system. Make sure there is enough space for `<WORK_DIR>`!  
-(We estimate at least 1.2TB of space!:open_mouth: Because we will unpact video into images for detection.)  
+`<WORK_DIR>` will be the storage place for intermediate product of our system. Make sure there is enough space for `<WORK_DIR>`! (We estimate at least 1.2TB of space!:open_mouth: Because we will unpact video into images for detection.)  
 Also, please use absolute path for both `<DATASET_DIR>` and `<WORK_DIR>`.
 
 Expect to wait for a few days, or maybe, weeks, depending on your machine. (Yes, we are not exaggerating. Detection itself took weeks on our machine with 1 GTX1080Ti)  
