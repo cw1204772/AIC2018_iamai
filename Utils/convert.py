@@ -12,8 +12,6 @@ for root_dir_path, sub_dir_name_list, sub_file_name_list in os.walk(FLAGS.videos
     for seq_idx, sub_file_name in enumerate(sub_file_name_list):
         if not os.path.exists(os.path.join(FLAGS.images_dir_path, os.path.splitext(sub_file_name)[0])):
             os.mkdir(os.path.join(FLAGS.images_dir_path, os.path.splitext(sub_file_name)[0]))
-        if seq_idx < 7:
-            continue
         cap = cv2.VideoCapture(os.path.join(root_dir_path, sub_file_name))
         image_idx = 0
         ret = cap.isOpened()

@@ -8,34 +8,43 @@ To clone this repo, please execute:
 ```
 git clone --recurse-submodules https://github.com/cw1204772/AIC2018_iamai.git  
 ```
+
 If you've already clone this repo but haven't clone the submodule (`Tracking/iou-tracker`), execute:
 ```
 git submodule init
 git submodule update
 ```
 
-Requirements:   
-Python 3.5 or newer.  
-Run `pip3 install -r requirements.txt` to install all dependence package.
+If you experience any bugs or problems, please contact us. (cwwu@media.ee.ntu.edu.tw)
+
+## Requirements
+
+* Python 2.7 or newer:  
+  Please install [detectron](https://github.com/facebookresearch/Detectron), a powerful open-sourced object detector thanks to Facebook. Please refer to the [INSTALL.md](https://github.com/facebookresearch/Detectron/blob/master/INSTALL.md) to install all dependencies for inference.
+* Python 3.5 or newer:  
+  Run `pip3 install -r requirements.txt` to install all dependence packages.
 
 ## Demo
 
 Hurray!  
 We've managed to create a script for running the entire system!  
-Please download all 2018 NVIDIA AI City Challenge Track 3 videos into `<DATASET_DIR>` and execute:
+First, Download all 2018 NVIDIA AI City Challenge Track 3 videos into `<DATASET_DIR>`.  
+Then, you need to download the pre-trained Re-ID CNN model. Please email your full name and affiliation to the contact person (cwwu@media.ee.ntu.edu.tw) for obtaining the download link. Download the model to `ReID/ReID_CNN/`.
+Last, execute:
 ```
 ./run.sh <DATASET_DIR> <WORK_DIR>
 ```
-(`<WORK_DIR>` will be the storage place for intermediate product of our system)  
-Then, wait for a few days.  
-The final result for submission will be here: `<WORK_DIR>/MCT/fasta/track3.txt`.  
+**Important**
+`<WORK_DIR>` will be the storage place for intermediate product of our system. Make sure there is enough space for `<WORK_DIR>`!  
+(We estimate at least 1.2TB of space!:open_mouth: Because we will unpact video into images for detection.)  
+Also, please use absolute path for both `<DATASET_DIR>` and `<WORK_DIR>`.
+
+Expect to wait for a few days, or maybe, weeks, depending on your machine. (Yes, we are not exaggerating. Detection itself took weeks on our machine with 1 GTX1080Ti)  
+The final result will show up here: `<WORK_DIR>/MCT/fasta/track3.txt`.  
 (Assuming there are no bugs!:smiley:)
 
-**Reminder**  
-Make sure there is enough space for `<WORK_DIR>`!
-(Probably 100GB of space.)
-
 ## Detail Guide
+
 If you have some spare time and decide to dig into our system, we provide the tedious instruction for each stage of our system here.
 
 ### Detection
@@ -109,11 +118,7 @@ python3 ReID/Post_tracking.py [-h] [--dist_th DIST_TH] [--size_th SIZE_TH]
 ### Train CNN Feature Extractor
 
 If you wish to train a CNN feature extractor from scratch, please refer to `ReID/ReID_CNN/Readme.md`.  
-Or, you can download our pre-trained model by executing
-```
-wget https://www.dropbox.com/s/yexvkmryputw9ju/model_880_base.ckpt?dl=1 -O ReID/ReID_CNN/model_880_base.ckpt
-```
-Model will be at `ReID/ReID_CNN/model_880_base.ckpt`
+Or, you can download our pre-trained model. Please email your full name and affiliation to the contact person (cwwu@media.ee.ntu.edu.tw) for obtaining the download link.
 
 ### Single Camera Tracking
 

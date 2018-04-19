@@ -217,16 +217,15 @@ def multi_camera_matching(opt,MCT):
     elif opt.method == 're-rank-4' or opt.method == 're-rank-all':
         print('reranking...')
         # First cluster every Location
-        '''
         Locs = [[],[],[],[]]
         for i,loc_tracks in enumerate(MCT):
             print('Loc%d'%(i+1))
             opt.k = len(loc_tracks)//opt.n
-            # classes = clustering(opt,loc_tracks)
-            # with open(os.path.join(opt.output_dir, 'Loc%d_cluster.pkl' % (i+1)), 'wb') as f:
-                # pickle.dump(classes, f)
-            with open(os.path.join('/home/cw1204772/Dataset/AIC2018/MCT/fasta_joint_vanilla_biased_knn_avg','Loc%d_cluster.pkl'%(i+1)),'rb') as f:
-                classes = pickle.load(f)
+            classes = clustering(opt,loc_tracks)
+            with open(os.path.join(opt.output_dir, 'Loc%d_cluster.pkl' % (i+1)), 'wb') as f:
+                pickle.dump(classes, f)
+            #with open(os.path.join('/home/cw1204772/Dataset/AIC2018/MCT/fasta_joint_vanilla_biased_knn_avg','Loc%d_cluster.pkl'%(i+1)),'rb') as f:
+            #    classes = pickle.load(f)
 
             for class_id in tqdm(np.unique(classes).tolist()):
                 select = np.where(classes == class_id)[0]
@@ -236,13 +235,13 @@ def multi_camera_matching(opt,MCT):
                 Locs[i].append(track)
         with open(os.path.join(opt.output_dir,'Locs.pkl'),'wb') as f:
             pickle.dump(Locs,f)
-        '''
-        with open(os.path.join(opt.output_dir,'Locs.pkl'),'rb') as f:
-            Locs  = pickle.load(f)
+        #with open(os.path.join(opt.output_dir,'Locs.pkl'),'rb') as f:
+        #    Locs  = pickle.load(f)
         ###############
-        
+        ''' 
         with open(os.path.join(opt.output_dir,'Loc4_cluster.pkl'), 'rb') as f:
             classes = pickle.load(f)
+
         temp = []
         for class_id in tqdm(np.unique(classes).tolist()):
             select = np.where(classes == class_id)[0]
@@ -253,7 +252,7 @@ def multi_camera_matching(opt,MCT):
         Locs[3] = temp
         with open(os.path.join(opt.output_dir,'Locs.pkl'),'wb') as f:
             pickle.dump(Locs,f)       
-         
+        ''' 
         ###############
         
         q_idx = list(range(len(Locs[3])))
@@ -316,8 +315,8 @@ def multi_camera_matching(opt,MCT):
             with open(os.path.join(opt.output_dir, 'after_re_ranking.pkl'), 'wb') as f:
                 pickle.dump(multi_loc_tracks, f)
             
-            with open(os.path.join(opt.output_dir, 'after_re_ranking.pkl'), 'rb') as f:
-                multi_loc_tracks = pickle.load(f)
+            #with open(os.path.join(opt.output_dir, 'after_re_ranking.pkl'), 'rb') as f:
+            #    multi_loc_tracks = pickle.load(f)
             
             
             #print(multi_loc_tracks[0][2].dump())
@@ -350,11 +349,11 @@ def multi_camera_matching(opt,MCT):
         for i, loc_tracks in enumerate(MCT):
             print('Loc%d' % (i+1))
             opt.k = len(loc_tracks) // opt.n
-            #classes = clustering(opt, loc_tracks)
-            #with open(os.path.join(opt.output_dir, 'Loc%d_cluster.pkl' % (i+1)), 'wb') as f:
-            #    pickle.dump(classes, f)
-            with open(os.path.join(opt.output_dir, 'Loc%d_cluster.pkl' % (i+1)), 'rb') as f:
-                classes = pickle.load(f)
+            classes = clustering(opt, loc_tracks)
+            with open(os.path.join(opt.output_dir, 'Loc%d_cluster.pkl' % (i+1)), 'wb') as f:
+                pickle.dump(classes, f)
+            #with open(os.path.join(opt.output_dir, 'Loc%d_cluster.pkl' % (i+1)), 'rb') as f:
+            #    classes = pickle.load(f)
 
             for class_id in tqdm(np.unique(classes).tolist()):
                 select = np.where(classes == class_id)[0]
@@ -545,7 +544,7 @@ def check_conflict(tracks):
     return conflict_idx
 
 def remove(args, tracks):
-    """Remove detections from tracks due to some mysterious reason"""
+    """Remove detections from tracks"""
     filter_dets = np.loadtxt(args.filter)
     d = {tuple(row[[0,1,3,4]].astype(int)):True for row in filter_dets}
     del_idx = []
@@ -677,7 +676,7 @@ if __name__ == '__main__':
     parser.add_argument('--k', type=int, help='# of clusters')
     parser.add_argument('--n', type=int, help='bottom up parameter')
     parser.add_argument('--sum', default='avg', help='feature summarization method: max or avg')
-    parser.add_argument('--filter', help='the filter file for mysterious filtering')
+    parser.add_argument('--filter', help='the filter file for filtering')
     args = parser.parse_args()
     
     # Create sequence names
@@ -713,9 +712,10 @@ if __name__ == '__main__':
     #sys.exit()
 
     # Remove detections with known submissions
-    tracks = remove(args, tracks)
-    with open(os.path.join(args.output_dir, 'after_remove.pkl'), 'wb') as f:
-        pickle.dump(tracks, f)
+    if args.filter is not None:
+        tracks = remove(args, tracks)
+        with open(os.path.join(args.output_dir, 'after_remove.pkl'), 'wb') as f:
+            pickle.dump(tracks, f)
 
     # Decide the final 100 tracks
     #tracks = sample_tracks(tracks, 100)
