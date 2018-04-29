@@ -12,14 +12,14 @@ Chih-Wei Wu, Chih-Ting Liu, Chen-En Jiang, Wei-Chih Tu, Shao-Yi Chien "Vehicle R
 ![adaptive_feature_learning](https://github.com/cw1204772/AIC2018_iamai/raw/master/ReID/ReID_CNN/afl4.png "The space-time prior exploit for adaptive feature learning")
 
 Please follow the steps below for training CNN:
-1. Install requirements in [Readme.md](https://github.com/cw1204772/AIC2018_iamai#requirements).
-2. In this step, we prepare data for [2018 NVIDIA AI City Challenge](https://www.aicitychallenge.org/). Follow detail guide in [Readme.md](https://github.com/cw1204772/AIC2018_iamai#detail-guide) until finishing stage III, Post-Tracking.
+1. Install requirements in root system's [Readme.md](https://github.com/cw1204772/AIC2018_iamai#requirements).
+2. In this step, we prepare data for [2018 NVIDIA AI City Challenge](https://www.aicitychallenge.org/). Follow detail guide section in root system's [Readme.md](https://github.com/cw1204772/AIC2018_iamai#detail-guide) until finishing stage III, Post-Tracking.
 3. Download and extract [VeRi](https://github.com/VehicleReId/VeRidataset), [CompCars](http://mmlab.ie.cuhk.edu.hk/datasets/comp_cars/index.html), [BoxCars116k](https://medusa.fit.vutbr.cz/traffic/research-topics/fine-grained-vehicle-recognition/boxcars-improving-vehicle-fine-grained-recognition-using-3d-bounding-boxes-in-traffic-surveillance/) dataset.  
 4. Run the following script to setup training:
 ```
 bash setup.sh <VeRi_DIR> <WORK_DIR> <CompCars_DIR> <BoxCars116k_DIR>
 ```
-(`<WORK_DIR>` is the working directory you setup for the system in step 2)
+(`<WORK_DIR>` is the working directory you setup for the system in step 2)  
 5. Now, we are ready to train! Train the model by:
 ```
 python3 train_joint.py --veri_txt VeRi_train_info.txt \

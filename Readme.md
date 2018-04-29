@@ -15,7 +15,7 @@ git submodule init
 git submodule update
 ```
 
-Please cite our [paper](https://github.com/cw1204772/AIC2018_iamai#citing) if you find our work helpful for you!
+Please cite our [paper](https://github.com/cw1204772/AIC2018_iamai#citing) if you find our work helpful for you!  
 If you experience any bugs or problems, please contact us. (cwwu@media.ee.ntu.edu.tw)
 
 ## Introduction
@@ -27,7 +27,7 @@ Meanwhile, the feature extracted from trained CNN is used to combine small track
 The last Multi-Camera Matching stage groups the tracklets across all sequences by their CNN features.
 Our vehicle Re-ID system can be easily applied to any other visual domain thanks to the core Adaptive Feature Learning (AFL) technique.  
 
-![system_overview](https://github.com/cw1204772/AIC2018_iamai/system_overview.png "Illustration of our proposed vehicle Re-ID pipeline")
+![system_overview](https://github.com/cw1204772/AIC2018_iamai/raw/master/system_overview.png "Illustration of our proposed vehicle Re-ID pipeline")
 
 ## Requirements
 
@@ -44,7 +44,7 @@ We've managed to create a script for running the entire system!
 Please follow the steps below:
 1. Download all [2018 NVIDIA AI City Challenge Track 3](https://www.aicitychallenge.org/) videos into `<DATASET_DIR>`.
 2. Download the pre-trained Re-ID CNN model.
-   It should be noticed that **our model is for non-commercial use only**, since we have agreed with the usage of [VeRi](https://github.com/VehicleReId/VeRidataset), [CompCars](http://mmlab.ie.cuhk.edu.hk/datasets/comp_cars/index.html), [BoxCars116k](https://medusa.fit.vutbr.cz/traffic/research-topics/fine-grained-vehicle-recognition/boxcars-improving-vehicle-fine-grained-recognition-using-3d-bounding-boxes-in-traffic-surveillance/) and [2018 NVIDIA AI City Challenge Track 3](https://www.aicitychallenge.org/) datasets.
+   It should be noticed that **our model is for research only**, since we have agreed with the usage of [VeRi](https://github.com/VehicleReId/VeRidataset), [CompCars](http://mmlab.ie.cuhk.edu.hk/datasets/comp_cars/index.html), [BoxCars116k](https://medusa.fit.vutbr.cz/traffic/research-topics/fine-grained-vehicle-recognition/boxcars-improving-vehicle-fine-grained-recognition-using-3d-bounding-boxes-in-traffic-surveillance/) and [2018 NVIDIA AI City Challenge Track 3](https://www.aicitychallenge.org/) datasets.
    If you agree with the usage restriction, download the [model](https://drive.google.com/open?id=1M-V-TilFg5yyVRsySCTOoFGgcn1HYlY3) to `ReID/ReID_CNN/`.
 3. Execute:
 ```
