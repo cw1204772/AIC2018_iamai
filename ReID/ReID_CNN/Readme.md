@@ -1,17 +1,26 @@
 # Adaptive Feature Learning CNN
 
-Here, we will train the CNN feature extractor for our vehicle Re-ID system.  
-This step should be performed after "Post-Tracking" stage of the system.  
-First, download VeRi, CompCars, BoxCars116k dataset.  
-Then, run the following script to setup training:
+Here, we will train the CNN feature extractor for our vehicle Re-ID system.
+We introduce the adaptive feature learning (AFL) technique to alleviate the requirements of labeled videos in the testing environment.
+It is based on the observation that one vehicle can not appear at multiple locations at the same time, and it should move continuously along the time.
+We call this the space-time prior and illustate it in the figure below.
+We exploit this nature in traffic videos to generate triplets, along with samples from existing vehicle datasets([VeRi](https://github.com/VehicleReId/VeRidataset), [CompCars](http://mmlab.ie.cuhk.edu.hk/datasets/comp_cars/index.html), [BoxCars116k](https://medusa.fit.vutbr.cz/traffic/research-topics/fine-grained-vehicle-recognition/boxcars-improving-vehicle-fine-grained-recognition-using-3d-bounding-boxes-in-traffic-surveillance/)), to train our CNN in a multi-task learning manner.
+
+More detail can be found in our paper:  
+Chih-Wei Wu, Chih-Ting Liu, Chen-En Jiang, Wei-Chih Tu, Shao-Yi Chien "Vehicle Re-Identification with the Space-Time Prior" CVPRW, 2018.  
+
+![adaptive_feature_learning](https://github.com/cw1204772/AIC2018_iamai/raw/master/ReID/ReID_CNN/afl4.png "The space-time prior exploit for adaptive feature learning")
+
+Please follow the steps below for training CNN:
+1. Install requirements in [Readme.md](https://github.com/cw1204772/AIC2018_iamai#requirements).
+2. In this step, we prepare data for [2018 NVIDIA AI City Challenge](https://www.aicitychallenge.org/). Follow detail guide in [Readme.md](https://github.com/cw1204772/AIC2018_iamai#detail-guide) until finishing stage III, Post-Tracking.
+3. Download and extract [VeRi](https://github.com/VehicleReId/VeRidataset), [CompCars](http://mmlab.ie.cuhk.edu.hk/datasets/comp_cars/index.html), [BoxCars116k](https://medusa.fit.vutbr.cz/traffic/research-topics/fine-grained-vehicle-recognition/boxcars-improving-vehicle-fine-grained-recognition-using-3d-bounding-boxes-in-traffic-surveillance/) dataset.  
+4. Run the following script to setup training:
 ```
 bash setup.sh <VeRi_DIR> <WORK_DIR> <CompCars_DIR> <BoxCars116k_DIR>
 ```
-(`<WORK_DIR>` is the working directory you setup for the system)  
-Now, we are ready to train!
-
-## Joint Training (AFL)
-
+(`<WORK_DIR>` is the working directory you setup for the system in step 2)
+5. Now, we are ready to train! Train the model by:
 ```
 python3 train_joint.py --veri_txt VeRi_train_info.txt \
                        --compcars_txt Comp_info/Comp_sv_train.txt \
@@ -25,8 +34,8 @@ python3 train_joint.py --veri_txt VeRi_train_info.txt \
                        --save_every_n_epoch 10 \
                        --class_w 1 --batch_size 128 \
                        --class_in_batch 32
-
 ```
+The model will be in `./ckpt`
 
 ## Train on VeRi Dataset
 

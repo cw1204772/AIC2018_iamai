@@ -1,8 +1,8 @@
-# 2018 NVIDIA AI City Challenge
+# 2018 NVIDIA AI City Challenge Team iamai
 
-Hi! We are participating team 37, **"iamai"**,  of 2018 NVIDIA AI City Challenge Track 3.  
+Hi!  
+We are participating team 37, **"iamai"**,  of [2018 NVIDIA AI City Challenge](https://www.aicitychallenge.org/) Track 3.  
 This is also the implementation of Chih-Wei Wu, Chih-Ting Liu, Chen-En Jiang, Wei-Chih Tu, Shao-Yi Chien **"Vehicle Re-Identification with the Space-Time Prior"** _CVPRW, 2018_.  
-It is an end-to-end vehicle detection, tracking, re-identification system.
 
 To clone this repo, please execute:
 ```
@@ -15,7 +15,19 @@ git submodule init
 git submodule update
 ```
 
+Please cite our [paper](https://github.com/cw1204772/AIC2018_iamai#citing) if you find our work helpful for you!
 If you experience any bugs or problems, please contact us. (cwwu@media.ee.ntu.edu.tw)
+
+## Introduction
+This is an end-to-end vehicle detection, tracking, re-identification system built for [2018 AI City Challenge](https://www.aicitychallenge.org/) Track 3.
+The proposed system contains three stages.
+Given input videos, Vehicle Proposals propose vehicle detection bounding boxes.
+Next, the Single Camera Tracking stage links the detection with high overlaps into a tracklet in each video sequence.
+Meanwhile, the feature extracted from trained CNN is used to combine small tracklets into large tracklets.
+The last Multi-Camera Matching stage groups the tracklets across all sequences by their CNN features.
+Our vehicle Re-ID system can be easily applied to any other visual domain thanks to the core Adaptive Feature Learning (AFL) technique.  
+
+![system_overview](https://github.com/cw1204772/AIC2018_iamai/system_overview.png "Illustration of our proposed vehicle Re-ID pipeline")
 
 ## Requirements
 
@@ -27,27 +39,31 @@ It requires both python 2 and 3 to run our system.
 
 ## Demo
 
-Hurray!  
-We've managed to create a script for running the entire system!  
-First, Download all 2018 NVIDIA AI City Challenge Track 3 videos into `<DATASET_DIR>`.  
-Then, you need to download the pre-trained Re-ID CNN model. Please email your full name and affiliation to the contact person (cwwu@media.ee.ntu.edu.tw) for obtaining the download link. Download the model to `ReID/ReID_CNN/`.  
-Last, execute:
+Hurray!
+We've managed to create a script for running the entire system!
+Please follow the steps below:
+1. Download all [2018 NVIDIA AI City Challenge Track 3](https://www.aicitychallenge.org/) videos into `<DATASET_DIR>`.
+2. Download the pre-trained Re-ID CNN model.
+   It should be noticed that **our model is for non-commercial use only**, since we have agreed with the usage of [VeRi](https://github.com/VehicleReId/VeRidataset), [CompCars](http://mmlab.ie.cuhk.edu.hk/datasets/comp_cars/index.html), [BoxCars116k](https://medusa.fit.vutbr.cz/traffic/research-topics/fine-grained-vehicle-recognition/boxcars-improving-vehicle-fine-grained-recognition-using-3d-bounding-boxes-in-traffic-surveillance/) and [2018 NVIDIA AI City Challenge Track 3](https://www.aicitychallenge.org/) datasets.
+   If you agree with the usage restriction, download the [model](https://drive.google.com/open?id=1M-V-TilFg5yyVRsySCTOoFGgcn1HYlY3) to `ReID/ReID_CNN/`.
+3. Execute:
 ```
 ./run.sh <DATASET_DIR> <WORK_DIR>
 ```
-__\*\*Important**__  
-`<WORK_DIR>` will be the storage place for intermediate product of our system. Make sure there is enough space for `<WORK_DIR>`! (We estimate at least 1.2TB of space!:open_mouth: Because we will unpact video into images for detection.)  
-Also, please use absolute path for both `<DATASET_DIR>` and `<WORK_DIR>`.
 
-Expect to wait for a few days, or maybe, weeks, depending on your machine. (Yes, we are not exaggerating. Detection itself took weeks on our machine with 1 GTX1080Ti)  
-The final result will show up here: `<WORK_DIR>/MCT/fasta/track3.txt`.  
+__\*\*Important**__  
+* `<WORK_DIR>` will be the storage place for intermediate product of our system. Make sure there is enough space for `<WORK_DIR>`! (We estimate at least 1.2TB of space!:open_mouth: Because we will unpact video into images for detection.)  
+* Also, please use absolute path for both `<DATASET_DIR>` and `<WORK_DIR>`.
+* Expect to wait for a few days, or maybe, weeks, depending on your machine. (Yes, we are not exaggerating. Detection itself took weeks on our machine with 1 GTX1080Ti)  
+
+The final result will show up here: `<WORK_DIR>/MCT/fasta/track3.txt`.
 (Assuming there are no bugs!:smiley:)
 
 ## Detail Guide
 
 Here, we provide detail instructions for each stage of our system.
 
-### Detection
+### I. Detection
 
 We use [detectron](https://github.com/facebookresearch/Detectron) for detection. Please refer to the [INSTALL.md](https://github.com/facebookresearch/Detectron/blob/master/INSTALL.md) to install caffe2 and other dependencies for inference.
 
@@ -93,9 +109,9 @@ We use [detectron](https://github.com/facebookresearch/Detectron) for detection.
    python2 tools/suppress.py --in_txt_file_path <input_txt> --out_txt_file_path <output_txt> --threshold 1e-5 --upper_area 1e5 --lower_side 25 --aspect_ratio 5
    ```
 
-### Tracking
+### II. Tracking
 
-We use our optimized version of [iou-tracker](https://github.com/bochinski/iou-tracker) for tracking.  
+We use our optimized version of [iou-tracker](https://github.com/cw1204772/iou-tracker) for tracking.  
 It will link detections into tracklets by simple IOU constraint within a video.
 To use it, try:
 
@@ -104,9 +120,9 @@ python3 Tracking/iou-tracker/demo.py [-h] -d DETECTION_PATH -o OUTPUT_PATH [-sl 
                                      [-sh SIGMA_H] [-si SIGMA_IOU] [-tm T_MIN]
 ```
 
-### Post-Tracking
+### III. Post-Tracking
 
-In this step, we will extract keypoint images within each tracklet.  
+In this step, we will extract keypoint images within each tracklet for every video.  
 To use it, try:
 
 ```
@@ -115,12 +131,11 @@ python3 ReID/Post_tracking.py [-h] [--dist_th DIST_TH] [--size_th SIZE_TH]
                               tracking_csv video output
 ```
 
-### Train CNN Feature Extractor
+### IV. Train CNN Feature Extractor
 
-If you wish to train a CNN feature extractor from scratch, please refer to `ReID/ReID_CNN/Readme.md`.  
-Or, you can download our pre-trained model. Please email your full name and affiliation to the contact person (cwwu@media.ee.ntu.edu.tw) for obtaining the download link.
+We provide detail instructions for training CNN feature extractor in [ReID/ReID_CNN](https://github.com/cw1204772/AIC2018_iamai/tree/master/ReID/ReID_CNN).  
 
-### Single Camera Tracking
+### V. Single Camera Tracking
 
 In this step, we associate tracklets within a video by comparing features and space-time information.  
 To use it, try:
@@ -132,7 +147,7 @@ python3 ReID/SCT.py [-h] [--window WINDOW] [--f_th F_TH] [--b_th B_TH] [--verbos
                     pkl output
 ```
 
-### Multi Camera Matching
+### VI. Multi Camera Matching
 
 There are a few matching methods to choose from, including the most successful `re-rank-4`.
 To use it, try:
@@ -162,7 +177,11 @@ python3 Utils/visualize.py [-h] [--w W] [--h H] [--fps FPS] [--length LENGTH]
 
 * NVIDIA AI City Challenge. https://www.aicitychallenge.org/, 2018.
 * R. Girshick, I. Radosavovic, G. Gkioxari, P. Dollar, and K. He. Detectron. https://github.com/facebookresearch/detectron, 2018.
-* E. Bochinski, V. Eiselein, and T. Sikora. High-speed tracking-by-detection without using image information. https://github.com/bochinski/iou-tracker. AVSS, 2017.
+* E. Bochinski, V. Eiselein, and T. Sikora. High-speed tracking-by-detection without using image information. AVSS, 2017.
+* X. Liu, W. Liu, H. Ma, and H. Fu. Large-scale vehicle reidentification in urban surveillance videos. ICME, 2016.
+* X. Liu, W. Liu, T. Mei, and H. Ma. A deep learning-based approach to progressive vehicle re-identification for urban surveillance. ECCV, 2016.
+* L. Yang, P. Luo, C. C. Loy, and X. Tang. A large-scale car dataset for fine-grained categorization and verification. CVPR, 2015.
+* J. Sochor, J. pahel, and A. Herout. Boxcars: Improving finegrained recognition of vehicles using 3-d bounding boxes in traffic surveillance. IEEE Transactions on Intelligent Transportation Systems, PP(99):1–12, 2018.
 
 ## Citing
 
