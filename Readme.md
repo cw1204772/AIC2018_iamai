@@ -2,7 +2,9 @@
 
 Hi!  
 We are participating team 37, **"iamai"**,  of [2018 NVIDIA AI City Challenge](https://www.aicitychallenge.org/) Track 3.  
-This is also the implementation of Chih-Wei Wu, Chih-Ting Liu, Chen-En Jiang, Wei-Chih Tu, Shao-Yi Chien **"Vehicle Re-Identification with the Space-Time Prior"** _CVPRW, 2018_.  
+This is the implementation of **"Vehicle Re-Identification with the Space-Time Prior"** _CVPRW, 2018_. \[[paper](http://media.ee.ntu.edu.tw/research/AIC2018/aic2018_wu.pdf)\]  
+
+_News: We won **2nd place** on the 2018 NVIDIA AI City Challenge Track 3!_  
 
 To clone this repo, please execute:
 ```
@@ -15,7 +17,7 @@ git submodule init
 git submodule update
 ```
 
-Please cite our [paper](https://github.com/cw1204772/AIC2018_iamai#citing) if you find our work helpful for you!  
+Please [cite](https://github.com/cw1204772/AIC2018_iamai#citing) our paper if you find our work helpful for you!  
 If you experience any bugs or problems, please contact us. (cwwu@media.ee.ntu.edu.tw)
 
 ## Introduction

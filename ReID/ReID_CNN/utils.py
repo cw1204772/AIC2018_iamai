@@ -350,6 +350,7 @@ class Unsupervised_TripletImage_Dataset(Dataset):
         self.transform_Tensor = transforms.Compose(trans_Tensor)
         
     def __getitem__(self, idx):
+        np.random.seed(time.time())
         sample_i = np.random.randint(len(self.samples))
         track_i = 0
         img_i = 0
