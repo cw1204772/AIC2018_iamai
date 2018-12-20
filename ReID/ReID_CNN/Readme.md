@@ -41,7 +41,7 @@ The model will be in `./ckpt`
 
 * Train classification model with VeRi or VeRi\_ict dataset
 ```
-python3 train.py --info VeRi_train_info.txt --lr 0.001 --batch_size 64 --n_epochs 20 --n_layer 18 --dataset VeRi
+python3 train.py --info VeRi_train_info.txt --save_model_dir ./ckpt --lr 0.001 --batch_size 64 --n_epochs 20 --n_layer 18 --dataset VeRi
 ```
 
 * Train triplet model with VeRi dataset
