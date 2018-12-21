@@ -290,7 +290,7 @@ class TripletImage_Dataset(Dataset):
         
     def __getitem__(self, idx):
         # for id
-        id = torch.arange(self.n_id).long()[idx]
+        id = np.arange(self.n_id)[idx]
         final_idx = np.zeros((self.image_per_class_in_batch,))
         select = np.nonzero(self.classes == id)[0]
         select = np.random.permutation(select)[:self.image_per_class_in_batch]
