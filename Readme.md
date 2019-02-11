@@ -1,10 +1,10 @@
 # 2018 NVIDIA AI City Challenge Team iamai
 
-Hi!  
-We are participating team 37, **"iamai"**,  of [2018 NVIDIA AI City Challenge](https://www.aicitychallenge.org/) Track 3.  
-This is the implementation of **"Vehicle Re-Identification with the Space-Time Prior"** _CVPRW, 2018_. \[[paper](http://media.ee.ntu.edu.tw/research/AIC2018/aic2018_wu.pdf)\]  
-
 _News: We won **2nd place** on the 2018 NVIDIA AI City Challenge Track 3!_  
+
+Hi! We are participating team 37, **"iamai"**,  of 2018 NVIDIA AI City Challenge Track 3.  
+This is the implementation of **"Vehicle Re-Identification with the Space-Time Prior"** _CVPRW, 2018_. \[[paper](http://media.ee.ntu.edu.tw/research/AIC2018/aic2018_wu.pdf)\]  
+Link to challenge website: https://www.aicitychallenge.org/
 
 To clone this repo, please execute:
 ```
@@ -17,11 +17,11 @@ git submodule init
 git submodule update
 ```
 
-Please [cite](https://github.com/cw1204772/AIC2018_iamai#citing) our paper if you find our work helpful for you!  
+Please cite our paper if you find our work helpful for you!  
 If you experience any bugs or problems, please contact us. (cwwu@media.ee.ntu.edu.tw)
 
 ## Introduction
-This is an end-to-end vehicle detection, tracking, re-identification system built for [2018 AI City Challenge](https://www.aicitychallenge.org/) Track 3.
+This is an end-to-end vehicle detection, tracking, re-identification system built for 2018 AI City Challenge Track 3.
 The proposed system contains three stages.
 Given input videos, Vehicle Proposals propose vehicle detection bounding boxes.
 Next, the Single Camera Tracking stage links the detection with high overlaps into a tracklet in each video sequence.
@@ -35,7 +35,7 @@ Our vehicle Re-ID system can be easily applied to any other visual domain thanks
 
 It requires both python 2 and 3 to run our system.
 * Python 2.7 or newer:  
-  Please install [detectron](https://github.com/facebookresearch/Detectron), a powerful open-sourced object detector thanks to Facebook. Please refer to the [INSTALL.md](https://github.com/facebookresearch/Detectron/blob/master/INSTALL.md) to install all dependencies for inference.
+  Please install detectron \[[link](https://github.com/facebookresearch/Detectron)\], a powerful open-sourced object detector thanks to Facebook. Please refer to the INSTALL.md of detectron to install all dependencies for inference.
 * Python 3.5 or newer:  
   Run `pip3 install -r requirements.txt` to install all dependence packages.
 
@@ -44,10 +44,11 @@ It requires both python 2 and 3 to run our system.
 Hurray!
 We've managed to create a script for running the entire system!
 Please follow the steps below:
-1. Download all [2018 NVIDIA AI City Challenge Track 3](https://www.aicitychallenge.org/) videos into `<DATASET_DIR>`.
+1. Download all 2018 NVIDIA AI City Challenge Track 3 videos into `<DATASET_DIR>`.
+   Please contact the organizers for requesting the dataset: https://www.aicitychallenge.org/
 2. Download the pre-trained Re-ID CNN model.
-   It should be noticed that **our model is for research only**, since we have agreed with the usage of [VeRi](https://github.com/VehicleReId/VeRidataset), [CompCars](http://mmlab.ie.cuhk.edu.hk/datasets/comp_cars/index.html), [BoxCars116k](https://medusa.fit.vutbr.cz/traffic/research-topics/fine-grained-vehicle-recognition/boxcars-improving-vehicle-fine-grained-recognition-using-3d-bounding-boxes-in-traffic-surveillance/) and [2018 NVIDIA AI City Challenge Track 3](https://www.aicitychallenge.org/) datasets.
-   If you agree with the usage restriction, download the [model](https://drive.google.com/open?id=1M-V-TilFg5yyVRsySCTOoFGgcn1HYlY3) to `ReID/ReID_CNN/`.
+   It should be noticed that **our model is for research only**, since we have agreed with the usage of VeRi, CompCars, BoxCars116k and 2018 NVIDIA AI City Challenge Track 3 datasets.
+   If you agree with the usage restriction, download the model \[[link](https://drive.google.com/open?id=1M-V-TilFg5yyVRsySCTOoFGgcn1HYlY3)\] to `ReID/ReID_CNN/`.
 3. Execute:
 ```
 ./run.sh <DATASET_DIR> <WORK_DIR>
@@ -67,7 +68,7 @@ Here, we provide detail instructions for each stage of our system.
 
 ### I. Detection
 
-We use [detectron](https://github.com/facebookresearch/Detectron) for detection. Please refer to the [INSTALL.md](https://github.com/facebookresearch/Detectron/blob/master/INSTALL.md) to install caffe2 and other dependencies for inference.
+We use detectron \[[link](https://github.com/facebookresearch/Detectron)\] for detection. Please refer to the INSTALL.md for detetron to install caffe2 and other dependencies for inference.
 
 1. Convert all the videos to frames
    
@@ -113,7 +114,7 @@ We use [detectron](https://github.com/facebookresearch/Detectron) for detection.
 
 ### II. Tracking
 
-We use our optimized version of [iou-tracker](https://github.com/cw1204772/iou-tracker) for tracking.  
+We use our optimized version of iou-tracker \[[link](https://github.com/cw1204772/iou-tracker)\] for tracking.  
 It will link detections into tracklets by simple IOU constraint within a video.
 To use it, try:
 
@@ -135,7 +136,10 @@ python3 ReID/Post_tracking.py [-h] [--dist_th DIST_TH] [--size_th SIZE_TH]
 
 ### IV. Train CNN Feature Extractor
 
-We provide detail instructions for training CNN feature extractor in [ReID/ReID_CNN](https://github.com/cw1204772/AIC2018_iamai/tree/master/ReID/ReID_CNN).  
+We provide detail instructions for training CNN feature extractor in folder [ReID/ReID_CNN](https://github.com/cw1204772/AIC2018_iamai/tree/master/ReID/ReID_CNN).  
+
+If you're not interested in training one, we provide our own model here \[[link](https://drive.google.com/open?id=1M-V-TilFg5yyVRsySCTOoFGgcn1HYlY3)\].
+Please take note that **our model is for research only**.
 
 ### V. Single Camera Tracking
 
