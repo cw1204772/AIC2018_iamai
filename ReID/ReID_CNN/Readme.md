@@ -11,6 +11,11 @@ Chih-Wei Wu, Chih-Ting Liu, Chen-En Jiang, Wei-Chih Tu, Shao-Yi Chien "Vehicle R
 
 ![adaptive_feature_learning](https://github.com/cw1204772/AIC2018_iamai/raw/master/ReID/ReID_CNN/afl4.png "The space-time prior exploit for adaptive feature learning")
 
+The following instruction are for training CNN by yourself.  
+We also provide our own model weight here \[[link](https://drive.google.com/open?id=1M-V-TilFg5yyVRsySCTOoFGgcn1HYlY3)\].
+
+## Train on Multiple Datasets
+
 Please follow the steps below for training CNN:
 1. Install requirements in root system's [Readme.md](https://github.com/cw1204772/AIC2018_iamai#requirements).
 2. In this step, we prepare data for [2018 NVIDIA AI City Challenge](https://www.aicitychallenge.org/). Follow detail guide section in root system's [Readme.md](https://github.com/cw1204772/AIC2018_iamai#detail-guide) until finishing stage III, Post-Tracking.
@@ -39,6 +44,7 @@ The model will be in `./ckpt`
 
 ## Train on VeRi Dataset
 
+If your are lazy to prepare so many datasets, we provide instructions for training only on VeRi dataset.  
 * Train classification model with VeRi or VeRi\_ict dataset
 ```
 python3 train.py --info VeRi_train_info.txt --save_model_dir ./ckpt --lr 0.001 --batch_size 64 --n_epochs 20 --n_layer 18 --dataset VeRi
