@@ -1,7 +1,0 @@
-ReID/UA_Train/
-ReID/UA_Test/
-ReID/ReID_CNN/__pycache__/
-ReID/ReID_CNN/txt_file/
-ReID/ReID_CNN/ckpt/
-ReID/ReID_CNN/features
-ReID/ReID_CNN/labels
